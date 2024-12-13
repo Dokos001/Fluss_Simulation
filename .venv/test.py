@@ -14,7 +14,7 @@ R = float(1.0)
 deltaZ = float(0.5)
 v0 = float(1.0)
 sensorPos = float(1.5)
-tmax = float(30.0)
+tmax = float(2.0)
 
 r1 = float(0.0)
 r2 = float(0.0)
@@ -56,22 +56,7 @@ x_values = np.linspace(-R , R, 100)
 y1_values = parabola_P1(x_values,tstart)
 y2_values = parabola_P2(x_values,tstart)
 
-# Plot the parabola
-# plt.axhline(0, color='black', linewidth=0.5, ls='--')  # x-axis
-# plt.axvline(0, color='black', linewidth=0.5, ls='--')  # y-axis
-
-# plt.axvline(-R, color='red', linewidth=1, ls='--')  # restriction line
-# plt.axvline( R, color='red', linewidth=1, ls='--')  # restriction line
-
-# plt.xlim(-R - 1, R + 1)
-# plt.ylim(v0*t - 2, v0*t + 2)
-# plt.fill_between(x_values, y1_values, y2_values, where=(y1_values > y2_values), color='red', alpha=0.5)
-# plt.title("Parabeln")
-# plt.xlabel('x')
-# plt.ylabel('y')
-# plt.grid()
-# plt.legend()
-# plt.show()
+# Create the figure and axis
 figGraph, axGraph = plt.subplots()
 x_valuesGraph = t
 line = axGraph.plot(0,0, color='red', alpha=0.5)
@@ -94,14 +79,14 @@ ax.set_ylim(v0 - 2, v0 + 2)
 
 ax.axvline(-R, color='red', linewidth=1, ls='--')  # restriction line
 ax.axvline( R, color='red', linewidth=1, ls='--')  # restriction line
-para1 = ax.plot(x_values, y1_values, label=f'y1 vorlaufende Parabel')
-para2 = ax.plot(x_values, y2_values, label=f'y2 nachlaufende Parabel')
-pointR1 = ax.plot(getR1(deltaZ/2,tstart), sensorPos, 'bo', label=f'R1')
-pointR2 = ax.plot(getR2(-deltaZ/2,tstart), sensorPos, 'ro', label=f'R2')
-sensor = ax.axhline(sensorPos, color='black', linewidth=1, ls='--', label= "Sensor Position")  # x-axis
+para1 = ax.plot(x_values, y1_values, label=f'y1 Outer Parabola')
+para2 = ax.plot(x_values, y2_values, label=f'y2 Inner Parabola')
+pointR1 = ax.plot(getR1(deltaZ/2,tstart), sensorPos, 'bo', label=f'r1')
+pointR2 = ax.plot(getR2(-deltaZ/2,tstart), sensorPos, 'ro', label=f'r2')
+sensor = ax.axhline(sensorPos, color='black', linewidth=1, ls='--', label= "Receiver Position")  # x-axis
 
 #ax.fill_between(x_values, y1_values, y2_values, where=(y1_values > y2_values), color='red', alpha=0.5)
-ax.set_title("Parabeln")
+ax.set_title("Example of Signal Trajectory")
 ax.set_xlabel('x')
 ax.set_ylabel('y')
 ax.grid()
@@ -172,16 +157,16 @@ def update2(frame):
     else:
         vol.append(reg4und0())
 
-    if  frame == frames-1:
-        x = []
-        values = []
-        with open('your_file.txt', 'w') as f:
-            for val in vol:
-                f.write(f"{val}\n")
-        vol = []
-        values = []
-        r1 = float(0.0)
-        r2 = float(0.0)
+    #if  frame == frames-1:
+    #    x = []
+    #    values = []
+    #    with open('your_file.txt', 'w') as f:
+    #        for val in vol:
+    #            f.write(f"{val}\n")
+    #    vol = []
+    #    values = []
+    #    r1 = float(0.0)
+    #    r2 = float(0.0)
     #print("r1: "+str(r1))
     #print("r2: "+str(r2))
     
@@ -190,8 +175,9 @@ def update2(frame):
 
     return (line)
 
-ani = animation.FuncAnimation(fig=fig, func=update, frames=frames, interval=interval)
-ani2 = animation.FuncAnimation(fig=figGraph, func=update2, frames=frames, interval=interval)
+ani = animation.FuncAnimation(fig=fig, func=update, frames=frames, interval=interval, repeat=False)
+ani2 = animation.FuncAnimation(fig=figGraph, func=update2, frames=frames, interval=interval, repeat=False)
+plt.savefig('parabola.png')
 plt.show()
 ani.save('parabola.gif', writer='Pillow', fps=30)
 ani2.save('volume.gif', writer='Pillow', fps=30)

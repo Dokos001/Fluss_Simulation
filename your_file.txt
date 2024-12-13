@@ -1,37 +1,64 @@
-Informationen im paper
+trainieren von unique datensätzen
 
-einleitung was machen wir und wieso machen wir es. literatur recherche zeigt lücke in der betrachtung von zeitvariablen kanälen. 
-Dafür ein model was durch eine erinnerungsstruktur mit den zeitveränderungen klarkommt. Bisher noch nicht in diesem fachbereich umgesetzt.
+trainieren von model auf einen statischen datensatz und testen auf einen nichtstatischen Datensatz ergibt 98% genauigkeit.
+Abfall war zu erwarten, Abfall geringer als erwartet jedoch. 
 
-stand der technik?
-hauptsächlich umgesetzte full DNN structuren oder modulbasierte ensambles. CNN's eher untervertreten obwohl sie in anderen bereichen 
-vielversprechende resultate auf zeitreihen erreicht haben.
+Erstellen und trainieren auf einem Unique Datensatz - Abgeschlossen erwarte ergebnis auswertung
 
-model inspiration und architektur. 
-Modelinspiration durch zeitabhängige anwendungskontexte im bereich der ezitreihenverarbeitung und kanal modelierung bei OFDM kanälen. 
-architectur stell ensemble aus zwei architekturen dar. 
-CNN zur Feature extraction unabhängig vom auftreten + lstm für analyse der einzelnen bits in abhängigkeit der bits zueinander.
+neue optimierung für einen statischen datensatz - Abgeschlossen erwarte ergebnis auswertung
 
-erkärung der paramter findung 
-parameter findung durch baysische optmierung. Optmierung über die accuracy auf den test daten.
+nachgucken ob overfitting nicht doch reduziert werden kann. Gründe für gute test Performance ermitteln.
+Model Overfittet indem es die Sequenzen lernt, allerdings ist dies hier kein problem, da dass model genau dies erreichen soll. 
+Es soll die sequenzen lernen und klassifizieren und auf mögliche veränderungen reaguieren, was es auch tut. 
+Dementsprechend ist overfitting vielleicht sogar ein gewünschter Effekt. 
 
+Beschreibung des Unique Datensatzes- gemacht
 
-evaluation und darstellung der Ergebnisse.
-evaluation über accuracy und bit error rate.
+erwähnung der baysiean optimierung über den test datensatz - gemacht
 
-
-Title
-Demodulation with Deep Neural Networks for Time-Dependent Flow-Based Communication Channels
-
-Abstract
-A major targeted application scenario of molecular communication (MC) is information transmission in biological 
-systems and in the human body in particular. These systems, however, are strongly time-dependent due to their 
-interaction with a changing environment, and so are the corresponding transmission channels, which hampers the 
-demodulation at the receiver. This challenge has been addressed in the context of MC for diffusion-based systems, 
-whereas strategies for flow-based channels have hardly been investigated. To address this issue, a deep neural network 
-consisting of a heterogenous Ensemble containing a CNN Block architectur and a bi-directional LSTM
-is proposed to improve demodulation for a straight tube with time-varying length and flow velocity, a scenario oriented 
-towards MC in the cardiovascular system. Simulated data is used to evaluate the performance of the proposed approach in 
-terms of bit error rate compared to the algorithm with a static channel assumed.
+Darstellung von Beispielsequenzen und Klassifizierungen. - gemacht
 
 
+conclusion und ergebnisse formulieren und angucken wie andere arbeiten das machen. - gemacht
+
+Kapitel: Limitations and future works. 
+Stress testen: extreme receiver verschiebungen ausprobieren, noise erhöhen, bit rate erhöhen.
+Tatsächliches Testbed: Die Anwendung eines tatsächlichen Testbeds und evaluierung des models auf diesem. 
+Weitere Channel veränderungen: blockaden, channel biegung.
+- gemacht
+
+Ändern der frequenz und darstellung der Daten mit verändertem receiver - gemacht
+Erwähnung der biologischen motivation in der introduction. - gemacht
+
+Orchid angucken - gemacht
+
+Einbindung der Results Bilder - gemacht
+
+jens arbeiten einbinden - gemacht
+
+warum simulationsdaten?
+begründung: simulationsmodel erlaubt uns verschiedene szenarien von zeitabhängigkeit durchzuspielen ohne 
+größeren aufwasn und ohne sofort alles drin zu haben (einzelne trends untersuchen) VIel gezeilter und reproduzierbarer anzugucken.
+-gemacht
+
+
+
+Datensätze für static und variable über git synchronisiseren - gemacht
+
+tabelle für simulationsparameter tabelle für ergebnisse - gemacht
+
+fig 3 rausschmeißen - gemacht
+
+neue semantische figur erstellen - gemacht
+
+'s entfenren und auf we verzichten - gemacht 
+
+results und methods neu trennen - gemacht
+
+Hauptinovationen nochmal zusammenfassen (etwas positiver darstellen) - gemacht
+
+Conclusion und Future Works - gemacht
+
+Unterschiedliche varainten der beeinflussung ansprechen (Kanalverengungen) - gemacht 
+
+zentrale message, bietet ausgangspunkt für so und so untersuchungen und zeitabhängigkeit von mc übertragungskanälen in biologischen systememn zu berüksichtigen - gemacht
