@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import itertools
 
 class DataGenerator:
     #################################################
@@ -24,12 +24,12 @@ class DataGenerator:
     N = 10  # Number of arrays
     M = 13  # Number of positions per array
 
-    bit_sequence = np.array([1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1])
+    f_rx = 0.5
 
     bit_rate = 1
     #################################################
 
-    def __init__(self):
+    def __init__(self, f_rx = None):
                 
                 self.t_start = 0
                 self.t_stop  = 20
@@ -41,7 +41,10 @@ class DataGenerator:
                 self.c_0 = 1
 
                 # Variation of the receiver position
-                # see subfunction sub_ReceiverPosition()
+                if f_rx == None:
+                    self.f_rx = 0.5
+                else: 
+                    self.f_rx = f_rx
 
                 # Bit sequence
                 # Parameters
@@ -52,12 +55,11 @@ class DataGenerator:
 
                 self.bit_rate = 1
                 print("Generator Ready")
-
     def sub_ReceiverPosition(self, t):
         # Parameters of varying receiver position
         z_offset = 10
         z_ampl   =  2
-        f_Rx     =  0.5
+        f_Rx     =  self.f_rx
         
         # Generation of varying receiver position
         z_varyRx = z_ampl * np.sin(2*np.pi*f_Rx * t) + z_offset
@@ -81,10 +83,14 @@ class DataGenerator:
         
         return s
 
-    def createDataSet(self, number_arrays, number_bits):
+    def createDataSet(self, number_arrays, number_bits, unique = False):
         # Sample times
         t = np.arange(self.t_start, self.t_stop, self.t_step)
-        sequenzes = [np.random.choice([0, 1], size = (number_bits)) for x in range(number_arrays)]
+        if unique:
+            sequenzes = create_Unique_Dataset(number_bits=number_bits)
+        else:
+            sequenzes = [np.random.choice([0, 1], size = (number_bits)) for x in range(number_arrays)]
+            
         dist_sequenzes = []
         ideal_sequenzes = []
         for seq in sequenzes:
@@ -98,11 +104,16 @@ class DataGenerator:
 
             # Received signal superimposed with noise
             rng = np.random.default_rng()
-            noise = 0.0005 * rng.normal(size=t.shape)
+            #noise = 0.0005 * rng.normal(size=t.shape)
+            noise = 0.0001 * rng.normal(size=t.shape)
             s_disturbed = s_varyRx + noise
 
             # Ideal signal (static receiver and without noise)
-            s_ideal     = s_statRx
+            s_ideal     = s_statRx + noise 
+
+
+            s_disturbed = [float(i)/max(s_disturbed) for i in s_disturbed]
+            s_ideal = [float(i)/max(s_ideal) for i in s_ideal]
 
             dist_sequenzes.append(s_disturbed)
             ideal_sequenzes.append(s_ideal)
@@ -112,12 +123,11 @@ class DataGenerator:
         return [t, dist_sequenzes, ideal_sequenzes, sequenzes]
     
     def plot_a_sequence(self):
-        [t, dist_sequenzes, ideal_sequenzes,sequenzes] = self.createDataSet()
+        [t, dist_sequenzes, ideal_sequenzes,sequenzes] = self.createDataSet(self.N, self.M)
 
-        s_disturbed = dist_sequenzes[5]
-        s_ideal     = ideal_sequenzes[5]
+        s_disturbed = dist_sequenzes[0]
+        s_ideal     = ideal_sequenzes[0]
 
-        print(sequenzes[5])
 
         # Plot both received signals (disturbed and ideal)
         plt.figure()
@@ -126,3 +136,16 @@ class DataGenerator:
         plt.xlabel('Time in s')
         plt.ylabel('Received signal s')
         plt.show()
+
+
+def create_Unique_Dataset(number_bits):
+    number_bits = 13  
+    number_arrays = 2**number_bits 
+
+    sequenzes = np.array([list(map(int, format(i, f'0{number_bits}b'))) for i in range(number_arrays)])
+
+    print(sequenzes.shape)
+    print(sequenzes[:5])
+    assert len(sequenzes) == 2**number_bits, "Something went wrong, but i dont know why!"
+    
+    return sequenzes

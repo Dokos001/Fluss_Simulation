@@ -4,6 +4,9 @@ import tensorflow.keras.layers as layers
 import tensorflow as tf
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.losses import BinaryCrossentropy
+
+
 
 
 class CBLSTM:
@@ -30,8 +33,9 @@ class CBLSTM:
                   learning_rate = None, batch_size = None):
                 tf.get_logger().setLevel('DEBUG')
                 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-                os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+                os.environ['CUDA_VISIBLE_DEVICES'] = '0'
                 gpus = tf.config.list_physical_devices('GPU')
+                print(gpus)
                 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
                 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
                 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
@@ -47,7 +51,7 @@ class CBLSTM:
                 else:
                         self.learning_rate = learning_rate
 
-    def create_model(self,learning_rate = 0.001, filters = [32,64,128,256], num_of_conv_Layers = 3, lstm_units = 13, lstm_layers = 3):
+    def create_model(self,learning_rate = 0.0001, filters = [32,64,128], num_of_conv_Layers = 3, lstm_units = 128, lstm_layers = 2, dropout_rate = 0.2):
         # Initialize the model
         first = True
 
@@ -60,23 +64,23 @@ class CBLSTM:
         inputs = tf.keras.Input(shape=input_shape)
         #masked_inputs = layers.Masking(mask_value=-1.0)(inputs)
 
-        initializer = tf.keras.initializers.GlorotUniform()
+        initializer = tf.keras.initializers.HeUniform()
 
         res = inputs
         for filt in filters:
 
             for x in range(num_of_conv_Layers):
                 if first:
-                    convlayer = layers.Conv1D(filt,3, input_shape = input_shape[1:],padding= 'causal', activation = tf.nn.leaky_relu, kernel_initializer=initializer)(inputs)
+                    convlayer = layers.Conv1D(filt,3, input_shape = input_shape[1:],padding= 'same', activation = tf.nn.leaky_relu, kernel_initializer=initializer)(inputs)
                     first = False
                 else:   
                     if x == 0:
-                        convlayer = layers.Conv1D(filt,3, input_shape = input_shape[1:],padding= 'causal', activation = tf.nn.leaky_relu, kernel_initializer=initializer)(res)
+                        convlayer = layers.Conv1D(filt,3, input_shape = input_shape[1:],padding= 'same', activation = tf.nn.leaky_relu, kernel_initializer=initializer)(res)
                     else:
-                        convlayer = layers.Conv1D(filt,3, input_shape = input_shape[1:],padding= 'causal', activation = tf.nn.leaky_relu, kernel_initializer=initializer)(convlayer)
+                        convlayer = layers.Conv1D(filt,3, input_shape = input_shape[1:],padding= 'same', activation = tf.nn.leaky_relu, kernel_initializer=initializer)(convlayer)
                 convlayer = layers.BatchNormalization()(convlayer)
-            poollayer = layers.MaxPooling1D(pool_size=(2), padding = "same")(convlayer)
-            dropout = layers.Dropout(0.2)(poollayer)
+            poollayer = layers.AveragePooling1D(pool_size=(2), padding = "same")(convlayer)
+            dropout = layers.Dropout(dropout_rate)(poollayer)
             res = layers.Conv1D(filt ,kernel_size=[1], strides=[2])(res)
             res = layers.add([res, dropout])
                     
@@ -84,8 +88,8 @@ class CBLSTM:
         x = res
         for i in range(lstm_layers):
             return_seq = True if i < lstm_layers - 1 else False
-            x = layers.Bidirectional(layers.LSTM(lstm_units, return_sequences=return_seq, activation='relu'))(x)
-            x = layers.Dropout(0.2)(x)
+            x = layers.Bidirectional(layers.LSTM(lstm_units, return_sequences=return_seq, activation='tanh'))(x)
+            x = layers.Dropout(dropout_rate)(x)
         bidirec = x
 
         #glob = layers.GlobalAveragePooling1D()(bidirec)
@@ -94,14 +98,13 @@ class CBLSTM:
 
         mdl = tf.keras.Model(inputs=inputs, outputs=softmax)
 
-        adam = tf.keras.optimizers.Adam(learning_rate = learning_rate)
+        adam = tf.keras.optimizers.Adam(learning_rate = learning_rate, clipnorm=1.0)
         # Compile the model
-        mdl.compile(optimizer=adam, loss="categorical_crossentropy", metrics=['accuracy'])
-        #Save a picture of the model
-        save_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'CBLSTM.png')
-        tf.keras.utils.plot_model(mdl, save_path, show_shapes=True)
+        
+        loss_fn = BinaryCrossentropy(from_logits=False)  # Falls Sigmoid verwendet wir
+        mdl.compile(optimizer=adam, loss=loss_fn, metrics=['accuracy', 'f1_score', tf.keras.metrics.BinaryCrossentropy(), 'precision'])
         # Summary of the model
-        mdl.summary()
+        #mdl.summary()
         self.model = mdl
         return mdl
     
@@ -128,7 +131,7 @@ class CBLSTM:
                         #validation_steps = validation_steps,
                         batch_size = batch_size,
                         verbose = 1,
-                        callbacks = [reduce_lr,early_stop])
+                        callbacks = [reduce_lr,early_stop,csv_logger])
                         #callbacks = [csv_logger])
         
         self.trained = trained
@@ -153,8 +156,6 @@ class CBLSTM:
         trained = self.model.fit(train, 
                                  validation_data = val,
                         epochs = epochs,
-                        #steps_per_epoch = steps_per_epoch,
-                        #validation_steps = validation_steps,
                         batch_size = batch_size,
                         verbose = 1,
                         callbacks = [reduce_lr,early_stop])
@@ -187,4 +188,6 @@ class CBLSTM:
             
 
             self.model.evaluate(test, verbose = 1) 
+
+
             
