@@ -126,4 +126,3 @@ class DataGenerator:
         plt.xlabel('Time in s')
         plt.ylabel('Received signal s')
         plt.show()
-
