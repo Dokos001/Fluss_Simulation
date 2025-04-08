@@ -108,7 +108,8 @@ def main():
     print(f" Accuracy: {accuracy}")
     print(f" BER: {inccorect_bits/whole_bits}")
     print(f" Average_BER: {np.mean(average_incorrect_bits)/13}")
-    display_train_val_loss()
+    if(training):
+        display_train_val_loss()
 
 
 
