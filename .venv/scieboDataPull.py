@@ -2,18 +2,17 @@ import os
 import pysciebo
 import requests
 import xml.etree.ElementTree as ET
+import keyring
 
 from getpass import getpass
 from tqdm import tqdm
 
 def main():
     os.environ["SCIEBO_URL"] = "https://fh-dortmund.sciebo.de/remote.php/webdav/EM2PIReLab/600_Datensaetze/610_VirtuelleFlusssimulation"
-    print(os.environ.get("SCIEBO_USERNAME"))
-    if os.environ.get("SCIEBO_USERNAME") is None or os.environ.get("SCIEBO_PASSWORD"):
+    Username = get_credentials("sciebo_UserName", "Username")
+    UserPassword = get_credentials("sciebo_UserPassword", "UserPassword")
+    if Username is None or UserPassword is None:
         Username, UserPassword = getInput()
-    else:
-        Username = os.environ.get("SCIEBO_USERNAME", "NotSet")
-        UserPassword = os.environ.get("SCIEBO_PASSWORD", "NotSet")
     path = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(path, "Datasets")
     if not os.path.exists(path):
@@ -73,7 +72,7 @@ def main():
 
 def getInput():
     # Get the input from the user
-    infoString = "To downlaod the dataset from Sciebo, please enter your credentials.\n Your credentials are saved in a local environment variable on you pc only.\n Your credentials will not be saved anywhere else or used for any other context.\n You can choose to not save them, but you will have to enter them again next time.\n You will be asked if you want to save your credentials after your input.\n\n"
+    infoString = "To downlaod the dataset from Sciebo, please enter your credentials.\n Your credentials are saved in the operating system on your pc only.\n Your credentials will not be saved anywhere else or used for any other context.\n You can choose to not save them, but you will have to enter them again next time.\n You will be asked if you want to save your credentials after your input.\n\n"
 
     print(infoString)
 
@@ -83,9 +82,9 @@ def getInput():
     boolSave = input("Do you want to save your credentials? (y/n): ")
     if boolSave == "y":
         # Save the credentials in a local environment variable
-        os.environ["SCIEBO_USERNAME"] = Username
-        os.environ["SCIEBO_PASSWORD"] = UserPassword
-        print("Your credentials have been saved in a local environment varaible on your own pc/laptop.")
+        save_credentials("sciebo_UserName", "Username", Username)
+        save_credentials("sciebo_UserPassword", "UserPassword", UserPassword)
+        print("Your credentials have been saved on your own pc/laptop.")
     else:
         if boolSave != "n":
             print("Invalid input. Your credentials will not be saved.")
@@ -115,6 +114,20 @@ def add_to_gitignore(folder_name):
         with open(gitignore_path, 'w') as file:
             file.write(f"{folder_name}/\n")
         print(f".gitignore was created and Folder {folder_name} was added.")
+
+def save_credentials(service, username, password):
+    keyring.set_password(service, username, password)
+    print(f"Credentials for {service} saved securely.")
+
+def get_credentials(service, username):
+    try:
+        password = keyring.get_password(service, username)
+        if password is None:
+            raise ValueError("No password found")
+        return password
+    except Exception as e:
+        print(f"Error retrieving credentials: {e}, if you have not set your credentials yet, please ignore this and enter them.")
+        return None
 
 if __name__ == "__main__":
     main()
