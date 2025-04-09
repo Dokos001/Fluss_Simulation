@@ -1,119 +1,122 @@
+import os
+import optuna
 from model import CBLSTM
 from DataGeneration import DataGenerator
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import GridSearchCV
 import tensorflow as tf
-import os
+from tensorflow.keras.callbacks import ReduceLROnPlateau
+from optuna.integration import KerasPruningCallback
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import CSVLogger
 import pandas as pd
-from scikeras.wrappers import KerasClassifier
+from sklearn.metrics import accuracy_score
+from tools import display_train_val_loss, create_Dataset, load_Dataset
 
-
-BATCH_SIZE = 64
+BATCH_SIZE          = 64
 SHUFFLE_BUFFER_SIZE = 10
-EPOCHS = 10
-NUMBER_OF_ARRAYS = 15
-NUMBER_OF_BITS = 13
-
-# Define the custom KerasClassifier subclass
-class CustomKerasClassifier(KerasClassifier):
-    def __init__(self, build_fn, **kwargs):
-        super().__init__(build_fn=build_fn, **kwargs)
-        self.build_fn = build_fn
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-    def create_model(self):
-        # Call the build function with all custom parameters passed in __init__
-        return self.build_fn(
-            learning_rate=self.learning_rate,
-            filters=self.filters,
-            num_of_conv_Layers=self.num_of_conv_Layers,
-            lstm_units=self.lstm_units,
-            lstm_layers=self.lstm_layers
-        )
-
-
-def build_model(learning_rate=0.001, filters=[32, 64, 128, 256], num_of_conv_Layers=3, lstm_units=13, lstm_layers=3):
-    model_instance = CBLSTM()
-    return model_instance.create_model(
-        learning_rate=learning_rate,
-        filters=filters,
-        num_of_conv_Layers=num_of_conv_Layers,
-        lstm_units=lstm_units,
-        lstm_layers=lstm_layers
-    )
+EPOCHS              = 20
+NUMBER_OF_ARRAYS    = 10000
+NUMBER_OF_BITS      = 13
+MODEL_SAVE_PATH     = os.path.dirname(os.path.abspath(__file__))
+filter_choices = {
+            0: [32,64,128],
+            1: [32, 64, 128, 256]#,
+            #2: [32, 32, 64, 64, 128, 128, 256, 256]
+        }
 
 def main():
+    model_instance = CBLSTM()
+    [X_train, X_test, y_train, y_test, X_val, y_val] = create_Dataset(number_of_Arrays=NUMBER_OF_ARRAYS, number_of_bits= NUMBER_OF_BITS, test_size=0.20, random_state=42, time_variable= False, unique= True)
+
+    #[X_train, X_test, y_train, y_test, X_val, y_val] = load_Dataset()
+    def objective(trial):
+        learning_rate       = trial.suggest_float('learning_rate', 1e-5, 1e-2, log=True)
+        dropout             = trial.suggest_categorical('dropout', [0.2, 0.3])#, 0.5])
+        filter_index        = trial.suggest_categorical('filters', [0, 1])#, 2])
+        filters             = filter_choices[filter_index]
+        num_of_conv_Layers  = trial.suggest_int('num_of_conv_Layers', 2, 5)
+        lstm_units          = trial.suggest_categorical('lstm_units', [39, 64, 128])#[13, 26, 39, 64])
+        lstm_layers         = trial.suggest_int('lstm_layers', 2, 4)
+        batch_size          = trial.suggest_categorical('batch_size', [16, 32, 64])#, 128])
+
+
+        
+        # Modell erstellen
+        model = model_instance.create_model(
+            learning_rate       = learning_rate,
+            filters             = filters,
+            num_of_conv_Layers  = num_of_conv_Layers,
+            lstm_units          = lstm_units,
+            lstm_layers         = lstm_layers,
+            dropout_rate        = dropout
+
+        )
+        reduce_lr   = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-6)
+        early_stop  = EarlyStopping(monitor='val_loss', patience=7, restore_best_weights=True)
+        pruning     = KerasPruningCallback(trial, 'val_accuracy')
+        # Training mit den gewählten Parametern
+        model.fit(
+            X_train,y_train, 
+            validation_data = [X_val, y_val],
+            batch_size      = batch_size,
+            epochs          = EPOCHS,
+            verbose         = 0,
+            callbacks       = [reduce_lr,pruning,early_stop]
+        )
+        
+        # Evaluierung
+        # evaluation = model.evaluate(X_test,y_test, verbose=1)
+        # accuracy = evaluation[1]  # Genauigkeit
+        y_pred              = model.predict(X_test)
+
+        binariized_y_pred   = [np.where(array > 0.5, 1, 0) for array in y_pred]
+
+        accuracy            = accuracy_score(y_test, binariized_y_pred)
+        return accuracy
+
+    # Optuna-Studie starten
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective, n_trials=20)  # Anzahl der Trials
+
+    # Beste Ergebnisse anzeigen
+    print("Best trial:")
+    print(f" Accuracy: {study.best_value}")
+    print(f" Params: {study.best_params}")
+
+    reduce_lr   = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-6)
+    early_stop  = EarlyStopping(monitor='val_loss', patience=7, restore_best_weights=True)
+    csvlogger   = CSVLogger('log.csv', append = True, separator = ';')
+
+    # Beste Parameter können verwendet werden, um das Modell zu trainieren
+    best_params = study.best_params
+    best_model  = model_instance.create_model(
+        learning_rate       = best_params['learning_rate'],
+        filters             = filter_choices[best_params['filters']],
+        num_of_conv_Layers  = best_params['num_of_conv_Layers'],
+        lstm_units          = best_params['lstm_units'],
+        lstm_layers         = best_params['lstm_layers']
+    )
+    best_model.fit(
+        X_train, y_train,
+        validation_data = (X_val, y_val),
+        batch_size      = best_params['batch_size'],
+        epochs          = EPOCHS,
+        callbacks       = [reduce_lr,early_stop, csvlogger]
+    )
+
+    # Bestes Modell speichern
+    best_model.save('best_param_model_static_unique.keras')
+    print(f"Best model saved at: {MODEL_SAVE_PATH}")
     
-
-    [X_train, X_test, y_train, y_test, X_val, y_val , train_dataset, val_dataset, test_dataset] = create_Dataset(NUMBER_OF_ARRAYS, NUMBER_OF_BITS, 0.20, 42)
-
-    batch_size = [10, 20, 30, 64, 128]
-    epochs = [10, 30, 50]
-    learning_rate = [0.005, 0.0025, 0.001, 0.0001]
-    filters = [[32,64,128,256],[32,32,64,64,128,128,256,256]]
-    num_of_conv_Layers = [3, 5]
-    lstm_units = [13, 26]
-    lstm_layers = [3, 5, 7]
-    param_grid_training = dict(optimizer__learning_rate=learning_rate, batch_size=batch_size, epochs=epochs)
-    param_grid_model = dict(filters=filters, num_of_conv_Layers=num_of_conv_Layers, lstm_units=lstm_units, lstm_layers=lstm_layers)
-
-    model = CustomKerasClassifier(build_fn= build_model, batch_size=BATCH_SIZE, epochs=EPOCHS, verbose = 1)
-
-    #Search for Model Parameters
-    grid_result_model = GridSearchCV(estimator=model, param_grid=param_grid_model, n_jobs=-1, cv=3)
-    grid_result_model = grid_result_model.fit(X_train, y_train)
-    print("Best: %f using %s" % (grid_result_model.best_score_, grid_result_model.best_params_))
-
-    results_df = pd.DataFrame(grid_result_model.cv_results_)
-    results_df.to_csv("grid_search_results_model.csv", index=False)
-
-    model = CustomKerasClassifier(buidl_fn = build_model, verbose = 1)
-
-    #Search for Training Parameters
-    grid_result_model = GridSearchCV(estimator=model, param_grid=param_grid_training, n_jobs=-1, cv=3)
-    grid_result_training = grid_result_model.fit(X_train, y_train)
-    print("Best: %f using %s" % (grid_result_training.best_score_, grid_result_training.best_params_))
-
-    results_df = pd.DataFrame(grid_result_training.cv_results_)
-    results_df.to_csv("grid_search_results_training.csv", index=False)
-
-    #model_instance.train_cnn_Model(train_dataset, val_dataset, batch_size=BATCH_SIZE, epochs=EPOCHS)
-
-
-
-    #y_pred = model_instance.evaluate_model(feature_files=X_test)
-    #y_pred = model_instance.evaluate_modelDataset(test_dataset)
-    #bit_preds = (y_pred >= 0.5).astype(int)
-    #print(y_pred[1])
-    #print(bit_preds[1])
-    #print(y_test[1])
-
-
-
-
-
-def create_Dataset(number_of_Arrays, number_of_bits, test_size, random_state):
-    Gen = DataGenerator()
-    [t, dist_sequenzes, ideal_sequenzes,sequenzes] = Gen.createDataSet(number_of_Arrays, number_of_bits)
-    X_train, X_test, y_train, y_test = train_test_split(dist_sequenzes,
-                                                    sequenzes,
-                                                    test_size=test_size,
-                                                    random_state=random_state)
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.20, random_state=random_state)
-    X_train, X_test, y_train, y_test, X_val, y_val = map(np.array, [X_train, X_test, y_train, y_test, X_val, y_val])
-
-    train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
-    val_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
-    test_dataset = tf.data.Dataset.from_tensor_slices((X_val, y_val))
-    train_dataset = train_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(BATCH_SIZE)
-    val_dataset = val_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(BATCH_SIZE)
-    test_dataset = test_dataset.batch(BATCH_SIZE)
-
-    return X_train, X_test, y_train, y_test, X_val, y_val , train_dataset, val_dataset, test_dataset
+    # Evaluierung
+    # evaluation = model.evaluate(X_test,y_test, verbose=1)
+    # accuracy = evaluation[1]  # Genauigkeit
+    y_pred              = best_model.predict(X_test)
+    binariized_y_pred   = [np.where(array > 0.5, 1, 0) for array in y_pred]
+    accuracy            = accuracy_score(y_test, binariized_y_pred)
+    print(f" Accuracy: {accuracy}")
 
 
 if __name__ == "__main__":
     main()
-    

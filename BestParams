@@ -1,0 +1,138 @@
+Best trial:
+  Accuracy: 1.0
+  Params: {'learning_rate': 0.00010399441706008359, 'dropout': 0.2, 'filters': 2, 'num_of_conv_Layers': 3, 'lstm_units': 26, 'lstm_layers': 2, 'batch_size': 16}
+
+  [I 2024-11-27 17:51:50,756] Trial 14 finished with value: 0.8725 and parameters: {'learning_rate': 3.256223240071979e-05, 'dropout': 0.2, 'filters': 1, 'num_of_conv_Layers': 3, 'lstm_units': 64, 'lstm_layers': 3, 'batch_size': 16}. Best is trial 2 with value: 1.0.
+
+  [I 2024-11-27 12:28:51,008] Trial 0 finished with value: 0.8995 and parameters: {'learning_rate': 0.00012913581794106398, 'dropout': 0.3, 'filters': 1, 'num_of_conv_Layers': 5, 'lstm_units': 64, 'lstm_layers': 3, 'batch_size': 128}. Best is trial 0 with value: 0.8995.
+
+  [I 2024-11-27 13:38:20,428] Trial 1 finished with value: 0.7515 and parameters: {'learning_rate': 0.0002625434517352578, 'dropout': 0.3, 'filters': 1, 'num_of_conv_Layers': 5, 'lstm_units': 26, 'lstm_layers': 4, 'batch_size': 64}.
+
+  Best trial:
+  Accuracy: 0.9975
+  Params: {'learning_rate': 0.002295686807057715, 'dropout': 0.2, 'filters': 0, 'num_of_conv_Layers': 4, 'lstm_units': 64, 'lstm_layers': 2, 'batch_size': 32}
+
+  Erkenntnisse: 
+
+  Dropout über 0.3 reduziert die performance des Models maßgeblich
+  Zu große Batch Size ergibt ebenfalls keine Sinnvollen Ergebnisse
+  LSTM units unter 39 sind zu wenig für den dimensionalen raum, größere Werte werden ausprobiert.
+  Zu viele Conv Blöcke ebenfalls zu schlecht
+
+
+Performance von einem auf statische dateien trainierten model auf einem nicht statischen datensatz  
+ Accuracy: 0.9885
+ BER: 0.0009615384615384616
+ Average_BER: 7.396449704142012e-05 Accuracy: 0.010372178157413058
+ BER: 0.3759327920401746
+ Average_BER: 0.02891790708001343
+Datensatz nicht eindeutig
+
+
+Auswertung, static unique
+Epoch 1/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 121s 678ms/step - accuracy: 0.3335 - binary_crossentropy: 0.6317 - f1_score: 0.1617 - loss: 0.6317 - precision: 0.6075 - val_accuracy: 0.5698 - val_binary_crossentropy: 0.6638 - val_f1_score: 0.1879 - val_loss: 0.6638 - val_precision: 0.6006 - learning_rate: 0.0023
+Epoch 2/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 672ms/step - accuracy: 0.7105 - binary_crossentropy: 0.4749 - f1_score: 0.2013 - loss: 0.4749 - precision: 0.7314 - val_accuracy: 0.4912 - val_binary_crossentropy: 0.8264 - val_f1_score: 0.1236 - val_loss: 0.8264 - val_precision: 0.5446 - learning_rate: 0.0023
+Epoch 3/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 672ms/step - accuracy: 0.7215 - binary_crossentropy: 0.4249 - f1_score: 0.2065 - loss: 0.4249 - precision: 0.7628 - val_accuracy: 0.6873 - val_binary_crossentropy: 0.4710 - val_f1_score: 0.2070 - val_loss: 0.4710 - val_precision: 0.8367 - learning_rate: 0.0023
+Epoch 4/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 672ms/step - accuracy: 0.6638 - binary_crossentropy: 0.3801 - f1_score: 0.2108 - loss: 0.3801 - precision: 0.7949 - val_accuracy: 0.7330 - val_binary_crossentropy: 0.3742 - val_f1_score: 0.2118 - val_loss: 0.3742 - val_precision: 0.8725 - learning_rate: 0.0023
+Epoch 5/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 672ms/step - accuracy: 0.5892 - binary_crossentropy: 0.3098 - f1_score: 0.2213 - loss: 0.3098 - precision: 0.8401 - val_accuracy: 0.7956 - val_binary_crossentropy: 0.3230 - val_f1_score: 0.2034 - val_loss: 0.3230 - val_precision: 0.8158 - learning_rate: 0.0023
+Epoch 6/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 672ms/step - accuracy: 0.5804 - binary_crossentropy: 0.2454 - f1_score: 0.2252 - loss: 0.2454 - precision: 0.8825 - val_accuracy: 0.5156 - val_binary_crossentropy: 0.3596 - val_f1_score: 0.2182 - val_loss: 0.3596 - val_precision: 0.8704 - learning_rate: 0.0023
+Epoch 7/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 117s 714ms/step - accuracy: 0.5649 - binary_crossentropy: 0.1832 - f1_score: 0.2252 - loss: 0.1832 - precision: 0.9183 - val_accuracy: 0.6270 - val_binary_crossentropy: 0.1436 - val_f1_score: 0.2168 - val_loss: 0.1436 - val_precision: 0.9145 - learning_rate: 0.0023
+Epoch 8/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 113s 686ms/step - accuracy: 0.4942 - binary_crossentropy: 0.1628 - f1_score: 0.2323 - loss: 0.1628 - precision: 0.9341 - val_accuracy: 0.4981 - val_binary_crossentropy: 0.1503 - val_f1_score: 0.2303 - val_loss: 0.1503 - val_precision: 0.9575 - learning_rate: 0.0023
+Epoch 9/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 672ms/step - accuracy: 0.4830 - binary_crossentropy: 0.1045 - f1_score: 0.2362 - loss: 0.1045 - precision: 0.9601 - val_accuracy: 0.6285 - val_binary_crossentropy: 0.1950 - val_f1_score: 0.2242 - val_loss: 0.1950 - val_precision: 0.9258 - learning_rate: 0.0023
+Epoch 10/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 673ms/step - accuracy: 0.5316 - binary_crossentropy: 0.0860 - f1_score: 0.2340 - loss: 0.0860 - precision: 0.9704 - val_accuracy: 0.4706 - val_binary_crossentropy: 0.0531 - val_f1_score: 0.2295 - val_loss: 0.0531 - val_precision: 0.9789 - learning_rate: 0.0023
+Epoch 11/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 674ms/step - accuracy: 0.4878 - binary_crossentropy: 0.0570 - f1_score: 0.2379 - loss: 0.0570 - precision: 0.9816 - val_accuracy: 0.7132 - val_binary_crossentropy: 0.1266 - val_f1_score: 0.2155 - val_loss: 0.1266 - val_precision: 0.9348 - learning_rate: 0.0023
+Epoch 12/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 672ms/step - accuracy: 0.5342 - binary_crossentropy: 0.0790 - f1_score: 0.2348 - loss: 0.0790 - precision: 0.9748 - val_accuracy: 0.6293 - val_binary_crossentropy: 0.1172 - val_f1_score: 0.2193 - val_loss: 0.1172 - val_precision: 0.9500 - learning_rate: 0.0023
+Epoch 13/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 673ms/step - accuracy: 0.4700 - binary_crossentropy: 0.0401 - f1_score: 0.2376 - loss: 0.0401 - precision: 0.9891 - val_accuracy: 0.6201 - val_binary_crossentropy: 0.0227 - val_f1_score: 0.2242 - val_loss: 0.0227 - val_precision: 0.9885 - learning_rate: 0.0023
+Epoch 14/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 673ms/step - accuracy: 0.4785 - binary_crossentropy: 0.0278 - f1_score: 0.2412 - loss: 0.0278 - precision: 0.9913 - val_accuracy: 0.7231 - val_binary_crossentropy: 0.0225 - val_f1_score: 0.2147 - val_loss: 0.0225 - val_precision: 0.9925 - learning_rate: 0.0023
+Epoch 15/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 672ms/step - accuracy: 0.5307 - binary_crossentropy: 0.0404 - f1_score: 0.2391 - loss: 0.0404 - precision: 0.9892 - val_accuracy: 0.5172 - val_binary_crossentropy: 0.0258 - val_f1_score: 0.2295 - val_loss: 0.0258 - val_precision: 0.9962 - learning_rate: 0.0023
+Epoch 16/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 671ms/step - accuracy: 0.5273 - binary_crossentropy: 0.0271 - f1_score: 0.2347 - loss: 0.0271 - precision: 0.9935 - val_accuracy: 0.2914 - val_binary_crossentropy: 0.6762 - val_f1_score: 0.1914 - val_loss: 0.6762 - val_precision: 0.7400 - learning_rate: 0.0023
+Epoch 17/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 671ms/step - accuracy: 0.4571 - binary_crossentropy: 0.0627 - f1_score: 0.2428 - loss: 0.0627 - precision: 0.9806 - val_accuracy: 0.5774 - val_binary_crossentropy: 0.0342 - val_f1_score: 0.2276 - val_loss: 0.0342 - val_precision: 0.9934 - learning_rate: 0.0023
+Epoch 18/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 671ms/step - accuracy: 0.4847 - binary_crossentropy: 0.0290 - f1_score: 0.2388 - loss: 0.0290 - precision: 0.9944 - val_accuracy: 0.6461 - val_binary_crossentropy: 0.0052 - val_f1_score: 0.2164 - val_loss: 0.0052 - val_precision: 0.9992 - learning_rate: 0.0011
+Epoch 19/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 672ms/step - accuracy: 0.4913 - binary_crossentropy: 0.0099 - f1_score: 0.2403 - loss: 0.0099 - precision: 0.9989 - val_accuracy: 0.5957 - val_binary_crossentropy: 0.0050 - val_f1_score: 0.2220 - val_loss: 0.0050 - val_precision: 0.9992 - learning_rate: 0.0011
+Epoch 20/20
+164/164 ━━━━━━━━━━━━━━━━━━━━ 110s 671ms/step - accuracy: 0.4542 - binary_crossentropy: 0.0086 - f1_score: 0.2434 - loss: 0.0086 - precision: 0.9990 - val_accuracy: 0.5698 - val_binary_crossentropy: 0.0030 - val_f1_score: 0.2264 - val_loss: 0.0030 - val_precision: 0.9996 - learning_rate: 0.0011
+Best model saved
+52/52 ━━━━━━━━━━━━━━━━━━━━ 8s 138ms/step 
+ Accuracy: 0.9981696156192801
+ BER: 0.0001407987985169193
+ Average_BER: 1.0830676808993792e-05
+
+
+
+ Optuna für Model auf statischem datensatz: 
+
+[I 2024-12-06 14:31:45,481] Trial 0 finished with value: 0.8248932275777914 and parameters: {'learning_rate': 0.0002463085694422315, 'dropout': 0.3, 'filters': 0, 'num_of_conv_Layers': 4, 'lstm_units': 64, 'lstm_layers': 4, 'batch_size': 32}. Best is trial 0 with value: 0.8248932275777914.
+
+[I 2024-12-06 15:06:13,049] Trial 1 finished with value: 0.21354484441732763 and parameters: {'learning_rate': 0.0004556029532280949, 'dropout': 0.3, 'filters': 0, 'num_of_conv_Layers': 4, 'lstm_units': 39, 'lstm_layers': 2, 'batch_size': 64}. Best is trial 0 with value: 0.8248932275777914.
+
+[I 2024-12-06 16:08:41,991] Trial 2 finished with value: 0.023794996949359364 and parameters: {'learning_rate': 1.4221900706212195e-05, 'dropout': 0.2, 'filters': 1, 'num_of_conv_Layers': 5, 'lstm_units': 128, 'lstm_layers': 2, 'batch_size': 32}. Best is trial 0 with value: 0.8248932275777914.
+
+[I 2024-12-06 16:51:55,301] Trial 3 finished with value: 0.5564368517388651 and parameters: {'learning_rate': 0.000309773002941949, 'dropout': 0.2, 'filters': 0, 'num_of_conv_Layers': 4, 'lstm_units': 39, 'lstm_layers': 4, 'batch_size': 32}. Best is trial 0 with value: 0.8248932275777914.
+
+[I 2024-12-06 17:36:53,715] Trial 4 finished with value: 0.0012202562538133007 and parameters: {'learning_rate': 1.3678499313866299e-05, 'dropout': 0.2, 'filters': 0, 'num_of_conv_Layers': 5, 'lstm_units': 39, 'lstm_layers': 2, 'batch_size': 16}. Best is trial 0 with value: 0.8248932275777914.
+
+[I 2024-12-06 18:35:14,511] Trial 7 finished with value: 1.0 and parameters: {'learning_rate': 0.0005747664890568998, 'dropout': 0.3, 'filters': 0, 'num_of_conv_Layers': 5, 'lstm_units': 64, 'lstm_layers': 3, 'batch_size': 16}. Best is trial 7 with value: 1.0.
+
+[I 2024-12-06 19:45:56,386] Trial 8 finished with value: 0.9133618059792556 and parameters: {'learning_rate': 0.0002792393688043387, 'dropout': 0.3, 'filters': 0, 'num_of_conv_Layers': 3, 'lstm_units': 128, 'lstm_layers': 4, 'batch_size': 32}. Best is trial 7 with value: 1.0.
+
+[I 2024-12-06 20:48:06,312] Trial 15 finished with value: 0.9072605247101891 and parameters: {'learning_rate': 0.003986907404727436, 'dropout': 0.3, 'filters': 0, 'num_of_conv_Layers': 2, 'lstm_units': 64, 'lstm_layers': 4, 'batch_size': 32}. Best is trial 7 with value: 1.0.
+
+[I 2024-12-06 22:10:48,938] Trial 16 finished with value: 0.9225137278828553 and parameters: {'learning_rate': 6.36873773015736e-05, 'dropout': 0.3, 'filters': 0, 'num_of_conv_Layers': 5, 'lstm_units': 128, 'lstm_layers': 3, 'batch_size': 16}. Best is trial 7 with value: 1.0.
+
+Best trial:
+ Accuracy: 1.0
+ Params: {'learning_rate': 0.0005747664890568998, 'dropout': 0.3, 'filters': 0, 'num_of_conv_Layers': 5, 'lstm_units': 64, 'lstm_layers': 3, 'batch_size': 16}
+
+Erkenntnisse: 
+Dropout 0.2 zu klein.
+
+
+Datensatz mit einer Oszillation als Receiver Verschiebung: 
+ Accuracy: 0.9701037217815741
+ BER: 0.0028159759703383865
+ Average_BER: 0.00021661353617987588
+
+Modeltrainiert auf tatischen receiver mit statischen testdaten und einer oszillation:
+ Accuracy: 0.9676632092739476
+ BER: 0.003191439433050171
+ Average_BER: 0.0002454953410038593
+
+Modeltrainiert auf statischen receiver mit variablen testdaten und einer oszillation:
+ Accuracy: 0.010372178157413058
+ BER: 0.3759327920401746
+ Average_BER: 0.02891790708001343
+
+Modeltrainiert auf 0.5 f_rx tested mit testdaten auf 0.05 f_rx (Model ohne oszillation kriegt daten mit oszillation):
+ Accuracy: 0.009151921903599756
+ BER: 0.3680011263903881
+ Average_BER: 0.02830777895310678
+
+Modeltrainiert auf 0.05 f_rx tested mit testdaten auf 0.5 f_rx (Model mit oszillation kriegt daten ohne oszillation):
+ Accuracy: 0.048810250152532035
+ BER: 0.19331675036373022
+ Average_BER: 0.014870519258748478
+
+Modeltrainiert auf 0.05 f_rx varaible tested mit statischen testdaten auf 0.05 f_rx:
+ Accuracy: 0.04697986577181208
+ BER: 0.19326981743089125
+ Average_BER: 0.01486690903314548
+
