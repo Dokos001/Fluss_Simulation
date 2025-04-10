@@ -1,5 +1,4 @@
-import os
-import optuna
+
 from model import CBLSTM
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -10,8 +9,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.callbacks import CSVLogger
 import pandas as pd
 from sklearn.metrics import accuracy_score
-from sklearn.metrics import cohen_kappa_score
-from tools import display_train_val_loss, create_Dataset, load_Dataset, create_pureTest_Dataset
+from tools import display_train_val_loss, load_Dataset
 
 
 BATCH_SIZE          = 32

@@ -1,6 +1,5 @@
 import math
 from matplotlib import animation
-from matplotlib.collections import PolyCollection
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -57,21 +56,6 @@ y1_values = parabola_P1(x_values,tstart)
 y2_values = parabola_P2(x_values,tstart)
 
 # Plot the parabola
-# plt.axhline(0, color='black', linewidth=0.5, ls='--')  # x-axis
-# plt.axvline(0, color='black', linewidth=0.5, ls='--')  # y-axis
-
-# plt.axvline(-R, color='red', linewidth=1, ls='--')  # restriction line
-# plt.axvline( R, color='red', linewidth=1, ls='--')  # restriction line
-
-# plt.xlim(-R - 1, R + 1)
-# plt.ylim(v0*t - 2, v0*t + 2)
-# plt.fill_between(x_values, y1_values, y2_values, where=(y1_values > y2_values), color='red', alpha=0.5)
-# plt.title("Parabeln")
-# plt.xlabel('x')
-# plt.ylabel('y')
-# plt.grid()
-# plt.legend()
-# plt.show()
 figGraph, axGraph = plt.subplots()
 x_valuesGraph = t
 line = axGraph.plot(0,0, color='red', alpha=0.5)

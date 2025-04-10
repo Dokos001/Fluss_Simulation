@@ -1,5 +1,4 @@
 import os
-import pysciebo
 import requests
 import xml.etree.ElementTree as ET
 import keyring
@@ -39,7 +38,7 @@ def main():
         print(f"Error while parsing File-List: {response.status_code}")
         exit()
 
-    # XML-Antwort parsen und nur .xml-Dateien extrahieren
+    # XML-Antwort parsen und nur .CSV-Dateien extrahieren
     ns = {"d": "DAV:"}
     tree = ET.fromstring(response.content)
     file_links = []
@@ -102,10 +101,10 @@ def add_to_gitignore(folder_name):
             gitignore_content = file.readlines()
 
         # Überprüfen, ob der Ordner bereits in der .gitignore steht
-        if f".venv/{folder_name}/\n" not in gitignore_content:
+        if f"{folder_name}/\n" not in gitignore_content:
             # Wenn nicht, füge ihn hinzu
             with open(gitignore_path, 'a') as file:
-                file.write(f".venv/{folder_name}/\n")
+                file.write(f"{folder_name}/\n")
             print(f"Folder {folder_name} was added to .gitignore.")
         else:
             print(f"Folder {folder_name} is already in .gitignore.")
