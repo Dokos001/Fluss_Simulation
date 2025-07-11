@@ -131,7 +131,7 @@ class CBLSTM:
                         #validation_steps = validation_steps,
                         batch_size = batch_size,
                         verbose = 1,
-                        callbacks = [reduce_lr,early_stop,csv_logger])
+                        callbacks = [reduce_lr,early_stop])#,csv_logger])
                         #callbacks = [csv_logger])
         
         self.trained = trained

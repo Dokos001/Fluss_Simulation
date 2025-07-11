@@ -1,9 +1,9 @@
 import pandas as pd
-from DataGeneration import DataGenerator
+from model.DataGeneration import DataGenerator
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tools import load_Dataset
+from model.tools import load_Dataset
 
 TIME_VARIABLE = True
 UNIQUE = True

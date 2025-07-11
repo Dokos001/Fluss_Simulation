@@ -2,7 +2,7 @@ import os
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-from DataGeneration import DataGenerator
+from model.DataGeneration import DataGenerator
 from sklearn.model_selection import train_test_split
 
 SAVE_ADDON = "_static_Receiver"

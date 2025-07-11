@@ -1,7 +1,7 @@
 import os
 import optuna
-from model import CBLSTM
-from DataGeneration import DataGenerator
+from model.model import CBLSTM
+from model.DataGeneration import DataGenerator
 import numpy as np
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
@@ -11,7 +11,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.callbacks import CSVLogger
 import pandas as pd
 from sklearn.metrics import accuracy_score
-from tools import display_train_val_loss, create_Dataset, load_Dataset
+from model.tools import display_train_val_loss, create_Dataset, load_Dataset
 
 BATCH_SIZE          = 64
 SHUFFLE_BUFFER_SIZE = 10

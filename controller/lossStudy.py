@@ -1,5 +1,5 @@
 
-from model import CBLSTM
+from model.model import CBLSTM
 import numpy as np
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
@@ -9,7 +9,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.callbacks import CSVLogger
 import pandas as pd
 from sklearn.metrics import accuracy_score
-from tools import display_train_val_loss, load_Dataset
+from model.tools import display_train_val_loss, load_Dataset
 
 
 BATCH_SIZE          = 32
