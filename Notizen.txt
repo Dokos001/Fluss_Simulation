@@ -1,0 +1,2 @@
+Habe das signal passend skaliert sodass die receiver größe nicht mehr die signalgröße beeinflusst
+habe ebenfalls das noise passend skaliert und direkt mit dem SNR verglichen. dieser wird datensatzweise dazugerechnet.
