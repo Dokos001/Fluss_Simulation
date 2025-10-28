@@ -1,0 +1,168 @@
+from matplotlib import pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy.fft import fft
+
+
+def plot_fringing_effects(x, E, E_norm ):
+
+    E_norm_turned = [E_norm[i] for i in range(len(E)-1, -1, -1)]  # Reverse the order of E_norm
+
+    weighting_Funktion = E_norm_turned+ np.ones(30).tolist()+ E_norm  
+    x_long = np.linspace(0, 1, len(x)*2+30)  # Extended x-axis for the weighting function
+
+    plt.figure()
+    plt.subplot(2, 1, 1)
+    plt.plot(x, E, 'r')
+    plt.xlabel('Distance from the edge of the plates (m)')
+    plt.ylabel('Electric field strength (V/m)')
+    plt.title('Fringing Effects on Electric Field Strength')
+    plt.grid(True)
+    """
+    plt.subplot(4, 1, 2)
+    plt.plot(x, E_norm, 'r')
+    plt.xlabel('Distance from the edge of the plates (m)')
+    plt.ylabel('Electric field strength (V/m)')
+    plt.title('Fringing Effects on Electric Field Strength')
+    plt.grid(True)
+    plt.subplot(4, 1, 3)
+    plt.plot(x, E_norm_turned, 'r')
+    plt.xlabel('Distance from the edge of the plates (m)')
+    plt.ylabel('Electric field strength (V/m)')
+    plt.title('Fringing Effects on Electric Field Strength')
+    plt.grid(True)
+    """
+    plt.subplot(2, 1, 2)
+    plt.plot(x_long, weighting_Funktion, 'r')
+    plt.xlabel('DIstance over the capacitor')
+    plt.ylabel('Electric field strength in %')
+    plt.title('Weighting Function for Bit Contribution')
+    plt.grid(True)
+    plt.show()
+
+def plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, z_varyRx, sequence_index=41):
+
+    s_disturbed = dist_sequenzes[sequence_index]
+    s_ideal     = ideal_sequenzes[sequence_index]
+    s_disturbed_noisy = dist_sequenzes_noisy[sequence_index]
+    s_ideal_noisy     = ideal_sequenzes_noisy[sequence_index]
+
+
+    noise_est_dist = s_disturbed_noisy - s_disturbed
+    clean_rms_dist = np.sqrt(np.mean(s_disturbed**2))
+    noise_rms_dist = np.sqrt(np.mean(noise_est_dist**2))
+
+
+    noise_est_ideal = s_ideal_noisy - s_ideal
+    clean_rms_ideal = np.sqrt(np.mean(s_ideal**2))
+    noise_rms_ideal = np.sqrt(np.mean(noise_est_ideal**2))
+
+    snr_linear_dist = clean_rms_dist / noise_rms_dist
+    snr_db_dist = 20 * np.log10(snr_linear_dist)
+
+    snr_linear_ideal = clean_rms_ideal / noise_rms_ideal
+    snr_db_ideal = 20 * np.log10(snr_linear_ideal)
+
+    print(f"Estimated SNR for disturbed signal: {snr_db_dist:.2f} dB")
+    print(f"Estimated SNR for ideal signal: {snr_db_ideal:.2f} dB")
+
+    rms_signal_dataset_dist = np.sqrt(np.mean(np.array(dist_sequenzes)**2))
+    rms_noise_dataset_dist  = np.sqrt(np.mean((dist_sequenzes_noisy - dist_sequenzes)**2))
+    snr_db_dataset_dist     = 20 * np.log10(rms_signal_dataset_dist / rms_noise_dataset_dist)
+    print(f"Estimated SNR for dataset (disturbed signals): {snr_db_dataset_dist:.2f} dB")
+
+    rms_signal_dataset_ideal = np.sqrt(np.mean(np.array(ideal_sequenzes)**2))
+    rms_noise_dataset_ideal  = np.sqrt(np.mean((ideal_sequenzes_noisy - ideal_sequenzes)**2))
+    snr_db_dataset_ideal     = 20 * np.log10(rms_signal_dataset_ideal / rms_noise_dataset_ideal)
+    print(f"Estimated SNR for dataset (ideal signals): {snr_db_dataset_ideal:.2f} dB")
+
+
+
+    # Plot both received signals (disturbed and ideal)
+    plt.figure()
+    plt.subplot(3,1,1)
+    plt.plot(t, z_varyRx, 'k')
+    plt.xlabel('Time in s')
+    plt.ylabel('Receiver position z in meters')
+    plt.title('Varying Receiver Position over one Sequence')
+    plt.grid(True)
+    plt.subplot(3,1,2)
+    plt.plot(t, s_disturbed, 'k')
+    plt.plot(t, s_ideal, 'r')
+    plt.xlabel('Time in s')
+    plt.ylabel('Received signal s')
+    plt.title('Received signal with static and oscillating receiver position')
+    plt.legend(['Disturbed signal', 'Ideal signal'])
+    plt.grid(True)
+    plt.subplot(3,1,3)
+    plt.plot(t, s_disturbed_noisy, 'k')
+    plt.plot(t, s_ideal_noisy, 'r')
+    plt.xlabel('Time in s')
+    plt.ylabel('Received signal s')
+    plt.title('Received signal with static and oscillating receiver position with noise')
+    plt.legend(['Disturbed signal', 'Ideal signal'])
+    plt.grid(True)
+    plt.savefig('./example_sequence.png', dpi=300)
+
+    plt.figure()
+    plt.subplot(2,1,1)
+    plt.plot(np.abs(fft(s_disturbed)), 'k')
+    plt.title('FFT of Disturbed Signal')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Magnitude')
+    plt.grid(True)
+    plt.subplot(2,1,2)
+    plt.plot(np.abs(fft(s_ideal)), 'r')
+    plt.title('FFT of Ideal Signal')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Magnitude')
+    plt.grid(True)
+    plt.savefig('./example_sequence_fft.png', dpi=300)
+    plt.show()
+
+def plot_noise_comparison(noiseAnalytics):
+    t, target_snrs_db, noisy_signal_dict = noiseAnalytics.createNoiseComp()
+
+    plt.figure(figsize=(12, 6))
+    for snr, noisy_signal in noisy_signal_dict.items():
+        plt.plot(t, noisy_signal, label=f'SNR = {snr} dB')
+    plt.title('Noisy Signals at Different SNR Levels')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Signal Amplitude')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def display_train_val_loss():
+    df = pd.read_csv('log.csv', delimiter = ';')
+    trainloss = np.array(df['loss'])
+    valloss = np.array(df['val_loss'])
+    plt.plot(trainloss, 'b')
+    plt.plot(valloss, color = 'orange')
+    plt.title("Verlauf der Loss Funktion")
+    plt.legend(['Training','Validierung'])
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.savefig('train_and_val_loss.png')
+    plt.show()
+
+def plot_noisy_signals(t, noisy_signal_dict):
+    plt.figure(figsize=(12, 6))
+    for snr, signal in noisy_signal_dict.items():
+        plt.plot(t, signal, label=f"SNR = {snr} dB")
+    plt.title("Noisy Signals at Different SNR Levels")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Signal Amplitude")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def plot_accuracy(snrs, accuracies):
+    plt.figure(figsize=(10, 6))
+    plt.plot(snrs, accuracies, marker="o")
+    plt.title("Model Accuracy vs. SNR")
+    plt.xlabel("SNR (dB)")
+    plt.ylabel("Accuracy")
+    plt.grid(True)
+    plt.show()
+

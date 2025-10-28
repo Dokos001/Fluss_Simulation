@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from model.DataGeneration import DataGenerator
 from sklearn.model_selection import train_test_split
+import h5py
 
 SAVE_ADDON = "_static_Receiver"
 UNIQUE_ADDON = "_Unique"
@@ -22,9 +23,9 @@ def display_train_val_loss():
     plt.savefig('train_and_val_loss.png')
     plt.show()
     
-def create_Dataset(number_of_Arrays, number_of_bits, test_size, random_state, time_variable = True, unique = True, f_rx = 0.5):
+def create_Dataset(number_of_Arrays, number_of_bits, test_size, random_state, time_variable = True, unique = True, f_rx = 0.5, dimReceiver = False):
     Gen = DataGenerator(f_rx= f_rx)
-    [t, dist_sequenzes, ideal_sequenzes, sequenzes] = Gen.createDataSet(number_of_Arrays, number_of_bits, unique=unique)
+    [t, dist_sequenzes, ideal_sequenzes, sequenzes] = Gen.createDataSet(number_of_Arrays, number_of_bits, unique=unique, DimReceiver=dimReceiver)
     
     if not time_variable:
         dist_sequenzes = ideal_sequenzes
@@ -122,6 +123,47 @@ def create_pureTest_Dataset(number_of_Arrays, number_of_bits, random_state, time
 
 
     return X_test, y_test
+
+
+def load_signals_from_hdf5(filename='complete_dataset.h5'):
+    dist_sequenzes = []
+    dist_sequenzes_noisy = []
+    ideal_sequenzes = []
+    ideal_sequenzes_noisy = []
+    sequenzes = []
+
+    with h5py.File(filename, 'r') as hf:
+        # Disturbed Signals
+        grp = hf['disturbed_signals']
+        dist_sequenzes = [sig for sig in grp['data']]
+        dist_sequenzes_noisy = [sig for sig in grp['data_noisy']]
+
+        # Ideal Signals
+        grp = hf['ideal_signals']
+        ideal_sequenzes = [sig for sig in grp['data']]
+        ideal_sequenzes_noisy = [sig for sig in grp['data_noisy']]
+
+        # Original Sequences
+        grp = hf['original_sequences']
+        sequenzes = [sig for sig in grp['data']]
+
+    return dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes
+
+
+def save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes):
+        with h5py.File('complete_dataset.h5', 'w') as hf:
+            grp = hf.create_group('disturbed_signals')
+            grp.create_dataset('data', data=dist_sequenzes)
+            grp.create_dataset('data_noisy', data=dist_sequenzes_noisy)
+
+            grp = hf.create_group('ideal_signals')
+            grp.create_dataset('data', data=ideal_sequenzes)
+            grp.create_dataset('data_noisy', data=ideal_sequenzes_noisy)
+
+            grp = hf.create_group('original_sequences')
+            grp.create_dataset('data', data=sequenzes)
+
+        print("Complete dataset saved to 'complete_dataset.h5'")
 
 
     
