@@ -1,4 +1,5 @@
 import os
+import re
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -9,6 +10,11 @@ import h5py
 SAVE_ADDON = "_static_Receiver"
 UNIQUE_ADDON = "_Unique"
 output_dir = "Datasets"
+
+
+def generate_Timeline(t_start, t_stop, t_step):
+    t = np.arange(t_start, t_stop, t_step)
+    return t
 
 def display_train_val_loss():
     df = pd.read_csv('log.csv', delimiter = ';')
@@ -125,7 +131,7 @@ def create_pureTest_Dataset(number_of_Arrays, number_of_bits, random_state, time
     return X_test, y_test
 
 
-def load_signals_from_hdf5(filename='complete_dataset.h5'):
+def load_RawData_from_hdf5(filename):
     dist_sequenzes = []
     dist_sequenzes_noisy = []
     ideal_sequenzes = []
@@ -150,8 +156,15 @@ def load_signals_from_hdf5(filename='complete_dataset.h5'):
     return dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes
 
 
-def save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes):
-        with h5py.File('complete_dataset.h5', 'w') as hf:
+def save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes, dataset_name, cfg):
+
+
+        with h5py.File(dataset_name, 'w') as hf:
+
+             # --- include MetaData ---
+            hf.attrs["dataset_name"] = dataset_name
+            for k, v in cfg.items():
+                hf.attrs[k] = v
             grp = hf.create_group('disturbed_signals')
             grp.create_dataset('data', data=dist_sequenzes)
             grp.create_dataset('data_noisy', data=dist_sequenzes_noisy)
@@ -165,5 +178,26 @@ def save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes,
 
         print("Complete dataset saved to 'complete_dataset.h5'")
 
+def sanitize(x):
+    return re.sub(r'\D', '', f"{x:.4g}")
 
+def generate_RawDataset_name(cfg):
+    save_dir = "./RawDatasets"
+    os.makedirs(save_dir, exist_ok=True)
+
+    dataset_name = (
+        f"b{cfg['NUMBER_OF_BITS']}"
+        f"_f{sanitize(cfg['F_RX'])}"
+        f"_v{sanitize(cfg['V_0'])}"
+        f"_dz{sanitize(cfg['DZ'])}"
+        f"_U{sanitize(cfg['U'])}"
+        f"_r{sanitize(cfg['CHANNEL_RADIUS'])}"
+        f"_z{sanitize(cfg['Z_DEPTH'])}"
+        f"_{'3d' if cfg['RECEIVER_DIMENSION_3D'] else '2d'}"
+    )
+
+    dataset_name += "_complete_dataset"
+    dataset_name = os.path.join(save_dir, dataset_name)
+    dataset_name += ".h5"
+    return dataset_name
     

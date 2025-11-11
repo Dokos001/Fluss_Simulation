@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.fft import fft
+from scipy.fft import fft, fftfreq
 
 
 def plot_fringing_effects(x, E, E_norm ):
@@ -47,6 +47,10 @@ def plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ide
     s_disturbed_noisy = dist_sequenzes_noisy[sequence_index]
     s_ideal_noisy     = ideal_sequenzes_noisy[sequence_index]
 
+    if not isinstance(dist_sequenzes_noisy, np.ndarray):
+        dist_sequenzes_noisy = np.array(dist_sequenzes_noisy)
+    if not isinstance(ideal_sequenzes_noisy, np.ndarray):
+        ideal_sequenzes_noisy = np.array(ideal_sequenzes_noisy)
 
     noise_est_dist = s_disturbed_noisy - s_disturbed
     clean_rms_dist = np.sqrt(np.mean(s_disturbed**2))
@@ -104,19 +108,35 @@ def plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ide
     plt.grid(True)
     plt.savefig('./example_sequence.png', dpi=300)
 
-    plt.figure()
+    dt = np.mean(np.diff(t)) 
+    fs = 1.0 / dt # Sampling frequency
+    N = len(s_disturbed)
+    yf_dist = fft(s_disturbed)     # FFT of the disturbed signal
+    yf_ideal = fft(s_ideal)        # FFT of the ideal signal
+    xf = fftfreq(N, 1/fs)
+
+    half = N // 2   # Only take the positive frequencies
+    xf = xf[:half] 
+    yf_dist = 2.0/N * np.abs(yf_dist[:half])  
+    yf_ideal = 2.0/N * np.abs(yf_ideal[:half])  
+
+    # Plot
+    plt.figure(figsize=(10, 5))
     plt.subplot(2,1,1)
-    plt.plot(np.abs(fft(s_disturbed)), 'k')
+    plt.bar(xf, yf_dist, width=fs/N, color='k', alpha=0.8)
     plt.title('FFT of Disturbed Signal')
-    plt.xlabel('Frequency (Hz)')
-    plt.ylabel('Magnitude')
-    plt.grid(True)
+    plt.xlabel("Frequency [Hz]")
+    plt.ylabel("Amplitude")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
     plt.subplot(2,1,2)
-    plt.plot(np.abs(fft(s_ideal)), 'r')
+    plt.bar(xf, yf_ideal, width=fs/N, color='r', alpha=0.8)
     plt.title('FFT of Ideal Signal')
-    plt.xlabel('Frequency (Hz)')
-    plt.ylabel('Magnitude')
-    plt.grid(True)
+    plt.xlabel("Frequency [Hz]")
+    plt.ylabel("Amplitude")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
     plt.savefig('./example_sequence_fft.png', dpi=300)
     plt.show()
 

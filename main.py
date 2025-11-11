@@ -1,5 +1,6 @@
 
 import json
+import model
 from model.model import CBLSTM
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -10,7 +11,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.callbacks import CSVLogger
 import pandas as pd
 from sklearn.metrics import accuracy_score
-from model.tools import display_train_val_loss, load_Dataset, create_Dataset, create_pureTest_Dataset
+from model.tools import display_train_val_loss, load_Dataset, create_Dataset, create_pureTest_Dataset, generate_RawDataset_name, load_RawData_from_hdf5,save_complete_dataset, generate_Timeline
 import random, os
 import typer
 from model.noiseAnalytics import noiseAnalyser
@@ -230,7 +231,15 @@ def create_config(config_path: str = "config/config.json"):
 def plot_example(config_path: str = "config/config.json"):
     cfg = load_config(config_path)
     Gen = DataGenerator()
-    [t, dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, sequenzes] = Gen.createDataSet(cfg["NUMBER_OF_ARRAYS"], cfg["NUMBER_OF_BITS"], unique=cfg["UNIQUE"], DimReceiver=cfg["RECEIVER_DIMENSION_3D"])
+    dataset_path = generate_RawDataset_name(cfg)
+    t = generate_Timeline(cfg["T_START"], cfg["T_STOP"], cfg["T_STEP"])
+    if os.path.exists(dataset_path):
+        print(f"Loading existing dataset from {dataset_path}...")
+        dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = load_RawData_from_hdf5(dataset_path)
+    else:
+        print("Creating new dataset...")
+        [dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, sequenzes] = Gen.createDataSet(t = t, number_arrays = cfg["NUMBER_OF_ARRAYS"], number_bits = cfg["NUMBER_OF_BITS"], unique = cfg["UNIQUE"], DimReceiver = cfg["RECEIVER_DIMENSION_3D"])
+        save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes, dataset_path, cfg)
     z_varyRx, z_statRx, z_depth_vector, weight_function = Gen.sub_ReceiverPosition(t)
     plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, z_varyRx, sequence_index=cfg.get("SEQUENCE_INDEX", 41))
 

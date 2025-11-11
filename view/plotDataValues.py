@@ -28,7 +28,7 @@ def main():
     binariized_y_pred   = [np.where(array > 0.5, 1, 0) for array in y_pred]
 
 
-    # Beispiel-Daten (ersetze diese durch deine echten Daten)
+    
     X_test = X_test
     y_test = y_test
     y_pred = binariized_y_pred

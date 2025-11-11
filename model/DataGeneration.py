@@ -1,4 +1,6 @@
+import itertools
 import math
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import invgauss
@@ -10,10 +12,6 @@ class DataGenerator:
     #################################################
     # Parameters
     #################################################
-    # Time span under scrutiny
-    t_start = 0
-    t_stop  = 40
-    t_step  = 0.01
 
     # Flow and concentration profile
     v_0         = 0.00707 # 3ml/min in m/s
@@ -24,7 +22,6 @@ class DataGenerator:
     z_offset    = 0.095
 
     U = 1.65 #Volt
-
 
     # Bit sequence
     # Parameters
@@ -44,7 +41,6 @@ class DataGenerator:
 
     def __init__(self, f_rx = None):
                 
-
                 # Variation of the receiver position
                 if f_rx == None:
                     self.f_rx = 0.025
@@ -67,9 +63,6 @@ class DataGenerator:
         weighting_Funktion = E_norm_turned+ np.ones(15).tolist()+ E_norm #Create weighting function for 3D receiver
         weighting_Funktion = np.array(weighting_Funktion)
         weighting_Funktion /= np.sum(weighting_Funktion) # Normalize weighting function
-
-
-
         
         # Generation of varying receiver position
         z_varyRx = z_ampl * np.sin(2*np.pi*f_Rx * t) + self.z_offset
@@ -122,11 +115,11 @@ class DataGenerator:
         s = np.sum(s_depth, axis=0) * Dim_receiver_correction  # Multiply by depth correction to account for discrete summation
         return s
 
-    def createDataSet(self, number_arrays, number_bits, unique = False,  DimReceiver = False):
+    def createDataSet(self, t, number_arrays, number_bits, unique = False,  DimReceiver = False):
         # Sample times
-        t = np.arange(self.t_start, self.t_stop, self.t_step)
+        
         if unique:
-            sequenzes = self.create_Unique_Dataset(number_bits)
+            sequenzes = self.create_Unique_Dataset(number_bits, number_arrays)
         else:
             sequenzes = [np.random.choice([0, 1], size = (number_bits)) for x in range(number_arrays)]
             
@@ -135,12 +128,9 @@ class DataGenerator:
         dist_sequenzes_noisy = []
         ideal_sequenzes_noisy = []
 
-
         z_varyRx, z_statRx, z_depth_vector, weight_function = self.sub_ReceiverPosition(t)
 
-
         for seq in tqdm(sequenzes):
-            
 
             if DimReceiver:
                 # Received signal (with/without varying Rx z-position) without noise
@@ -157,11 +147,9 @@ class DataGenerator:
             # Ideal signal 
             s_ideal     = s_statRx
 
-
             dist_sequenzes.append(s_disturbed)
             ideal_sequenzes.append(s_ideal)
             
-        
         dist_sequenzes = np.array(dist_sequenzes)
         ideal_sequenzes = np.array(ideal_sequenzes)
         dataset_dist_rms = np.sqrt(np.mean(dist_sequenzes**2))
@@ -177,21 +165,46 @@ class DataGenerator:
         dist_sequenzes_noisy = dist_sequenzes + noise_scaled_dist
         ideal_sequenzes_noisy = ideal_sequenzes + noise_scaled_ideal
 
+        return [dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy,  sequenzes]
 
+    def create_Unique_Dataset(self, n_bits: int, N: int = None):
+        """
+        Creates unique bit combinations of length n_bits.
 
+        :param n_bits: Number of bits per combination
+        :param N: Number of desired unique combinations (ignored if all=True)
+        :param all: If True, all possible combinations are generated (warning!)
+        :return: List of bitstrings of length n_bits
+        """
+        
+        max_combos = 2 ** n_bits
+        if N == max_combos:
+            all = True
+        else:
+            all = False
+        sequenzes = []
 
-        return [t, dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy,  sequenzes]
-    
+        if all:
+            print(f" Beware: you are about to create {max_combos:,} combinations!")
+            if max_combos > 1_000_000:
+                confirm = input("This may take a long time and require a lot of memory. "
+                                "Do you really want to continue? (y/n): ").strip().lower()
+                if confirm != "y":
+                    print("Interrupted.")
+                else:
+                    sequenzes = [list(map(int, bits)) for bits in tqdm(itertools.product('01', repeat=n_bits), total=max_combos)]
+        else:
+            if N is None:
+                raise ValueError("Please specify N or set all=True.")
+            if N > max_combos:
+                raise ValueError(f"There are only {max_combos} possible combinations, "
+                                f"but N={N} was requested.")
 
-    def create_Unique_Dataset(self, number_bits):
-        number_arrays = 2**number_bits 
+            nums = np.random.choice(max_combos, size=N, replace=False)
+            bits = ((nums[:, None] & (1 << np.arange(n_bits)[::-1])) > 0).astype(int)
+            sequenzes = bits.tolist()
 
-        # Create all possible combinations of 0 and 1 for 13 bits
-        sequenzes = np.array([list(map(int, format(i, f'0{number_bits}b'))) for i in range(number_arrays)])
-
-        print(sequenzes.shape)
-        print(sequenzes[:5])
-        assert len(sequenzes) == 2**number_bits, "Something went wrong, but i dont know why!"
+        sequenzes = np.array(sequenzes)
         
         return sequenzes
 

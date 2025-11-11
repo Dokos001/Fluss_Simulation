@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-frames = 160
-interval = 30
+frames = 520
+interval = 10
 vol = []
 values = []
 
@@ -13,7 +13,7 @@ R = float(1.0)
 deltaZ = float(0.5)
 v0 = float(1.0)
 sensorPos = float(1.5)
-tmax = float(30.0)
+tmax = float(10.0)
 
 r1 = float(0.0)
 r2 = float(0.0)
