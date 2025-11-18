@@ -13,50 +13,24 @@ class DataGenerator:
     # Parameters
     #################################################
 
-    # Flow and concentration profile
-    v_0         = 0.00707 # 3ml/min in m/s
-    dz          = 0.0005
-    c_0         = 1
-    #Receiver constants
-    z_depth     = 0.0075
-    z_offset    = 0.095
+    
+    
 
-    U = 1.65 #Volt
+    
 
-    # Bit sequence
-    # Parameters
-    N = 10  # Number of arrays
-    M = 13  # Number of positions per array
-
-    #Channel Radius
-    channel_radius = 0.00317  # in meters (3.17mm)
-    channel_wall_thickness = 0.00085  # in meters (0.85mm)
-
-    f_rx = 0.025
-
-    varying_receiver = []
-
-    bit_rate = 1
+    
     #################################################
 
-    def __init__(self, f_rx = None):
+    def __init__(self):
                 
-                # Variation of the receiver position
-                if f_rx == None:
-                    self.f_rx = 0.025
-                else: 
-                    self.f_rx = f_rx
-
-                self.bit_sequence = np.array([1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1])
 
                 print("Generator Ready")
 
-    def sub_ReceiverPosition(self, t):
+    def sub_ReceiverPosition(self, t, z_ampl, f_rx, z_offset, z_depth, channel_radius=0.00317, channel_wall_thickness=0.00085, U=1.65):
         # Parameters of varying receiver position
-        z_ampl   =  0.005
-        f_Rx     =  self.f_rx
+        
 
-        x, E, E_norm = self.fringing_effects() #Calculate fringing effects 
+        x, E, E_norm = self.fringing_effects(channel_radius=channel_radius, channel_wall_thickness=channel_wall_thickness, U=U) #Calculate fringing effects
 
         E_norm_turned = [E_norm[i] for i in range(len(E)-1, -1, -1)]  # Reverse the order of E_norm
 
@@ -65,12 +39,12 @@ class DataGenerator:
         weighting_Funktion /= np.sum(weighting_Funktion) # Normalize weighting function
         
         # Generation of varying receiver position
-        z_varyRx = z_ampl * np.sin(2*np.pi*f_Rx * t) + self.z_offset
+        z_varyRx = z_ampl * np.sin(2*np.pi*f_rx * t) + z_offset
         
         # Generation of static receiver position for reference
-        z_statRx = self.z_offset * np.ones(t.shape)
+        z_statRx = z_offset * np.ones(t.shape)
 
-        z_depth_vector = np.arange(0, self.z_depth, self.z_depth/len(weighting_Funktion))
+        z_depth_vector = np.arange(0, z_depth, z_depth/len(weighting_Funktion))
         #print("z_varyRx: ", z_varyRx)
         #print("z_depth_vector: ", z_depth_vector)
 
@@ -115,7 +89,7 @@ class DataGenerator:
         s = np.sum(s_depth, axis=0) * Dim_receiver_correction  # Multiply by depth correction to account for discrete summation
         return s
 
-    def createDataSet(self, t, number_arrays, number_bits, unique = False,  DimReceiver = False):
+    def createDataSet(self, t, number_arrays, number_bits, unique = False,  DimReceiver = False, f_rx = None, z_ampl = None, z_offset = None, z_depth = None, dz = None, v_0 = None, c_0 = None,  U = None, channel_radius=0.00317, channel_wall_thickness=0.00085):
         # Sample times
         
         if unique:
@@ -128,18 +102,18 @@ class DataGenerator:
         dist_sequenzes_noisy = []
         ideal_sequenzes_noisy = []
 
-        z_varyRx, z_statRx, z_depth_vector, weight_function = self.sub_ReceiverPosition(t)
+        z_varyRx, z_statRx, z_depth_vector, weight_function = self.sub_ReceiverPosition(t, z_ampl, f_rx, z_offset, z_depth, channel_radius=channel_radius, channel_wall_thickness=channel_wall_thickness, U=U)
 
         for seq in tqdm(sequenzes):
 
             if DimReceiver:
                 # Received signal (with/without varying Rx z-position) without noise
-                s_varyRx = self.sub_ReceivedSignal_3DReceiver(t, z_varyRx, z_depth_vector, self.dz, self.v_0, self.c_0, seq, weight_function)
-                s_statRx = self.sub_ReceivedSignal_3DReceiver(t, z_statRx, z_depth_vector, self.dz, self.v_0, self.c_0, seq, weight_function)
+                s_varyRx = self.sub_ReceivedSignal_3DReceiver(t, z_varyRx, z_depth_vector, dz, v_0, c_0, seq, weight_function)
+                s_statRx = self.sub_ReceivedSignal_3DReceiver(t, z_statRx, z_depth_vector, dz, v_0, c_0, seq, weight_function)
             else:
                 # Received signal (with/without varying Rx z-position) without noise
-                s_varyRx = self.sub_ReceivedSignal(t, z_varyRx, self.dz, self.v_0, self.c_0, seq)
-                s_statRx = self.sub_ReceivedSignal(t, z_statRx, self.dz, self.v_0, self.c_0, seq)
+                s_varyRx = self.sub_ReceivedSignal(t, z_varyRx, dz, v_0, c_0, seq)
+                s_statRx = self.sub_ReceivedSignal(t, z_statRx, dz, v_0, c_0, seq)
 
             # Oscillating signal 
             s_disturbed = s_varyRx
@@ -208,25 +182,25 @@ class DataGenerator:
         
         return sequenzes
 
-    def fringing_effects(self):
-        U = self.U
+    def fringing_effects(self, channel_radius=0.00317, channel_wall_thickness=0.00085, U=1.65):
+
         C = 0.205e-12  # Capacitance in Farads 
         A = 1.56e-5
-        d = self.channel_radius+2* self.channel_wall_thickness  # Distance between the plates (channel radius)
+        d = channel_radius + 2 * channel_wall_thickness  # Distance between the plates (channel radius)
         x = distance = np.linspace(0, 0.017, 40)  # Distance from the edge of the plates
         e0 = 8.854e-12  # Permittivity of free space in F/m
-        er1 = 3 # PVC 
-        er2 = 80 # Water
+        er1 = 3  # PVC
+        er2 = 80  # Water
 
         d1 = 0.85e-3
         d2 = 3.17e-3  
 
-        Q = C*U
+        Q = C * U
 
-        n = 4 #decreasing signal factor
+        n = 4  # decreasing signal factor
 
-        E = (Q/(A+e0))* ((d1/er1)+(d2/er2)) * (1 / (1+ np.power((2*x)/d , n)))  # Electric field with fringing effects
+        E = (Q / (A + e0)) * ((d1 / er1) + (d2 / er2)) * (1 / (1 + np.power((2 * x) / d, n)))  # Electric field with fringing effects
 
-        E_normalize = [float(i)/max(E) for i in E]  # Normalize the electric field
+        E_normalize = [float(i) / max(E) for i in E]  # Normalize the electric field
 
         return x, E, E_normalize

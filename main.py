@@ -11,7 +11,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.callbacks import CSVLogger
 import pandas as pd
 from sklearn.metrics import accuracy_score
-from model.tools import display_train_val_loss, load_Dataset, create_Dataset, create_pureTest_Dataset, generate_RawDataset_name, load_RawData_from_hdf5,save_complete_dataset, generate_Timeline
+from model.tools import display_train_val_loss, generate_MLDataset_name, load_MLDataset, create_MLDataset, create_pureTest_MLDataset, generate_RawDataset_name, load_RawData_from_hdf5,save_complete_dataset, generate_Timeline
 import random, os
 import typer
 from model.noiseAnalytics import noiseAnalyser
@@ -41,36 +41,50 @@ def set_random_seed(seed: int):
     random.seed(seed)
     tf.random.set_seed(seed)
 
-def prepare_data(cfg: dict):
+def prepare_data(cfg, Gen, t):
     """Erzeugt oder lädt die Trainings-/Testdaten entsprechend der Konfiguration."""
     [X_train, X_test, y_train, y_test, X_val, y_val] = None, None, None, None, None, None
-    if cfg["LOAD_DATASET"]:
-        [X_train, X_test, y_train, y_test, X_val, y_val] = load_Dataset(
-            time_variable=cfg["TIME_VARIABLE"],
-            unique=cfg["UNIQUE"],
-            f_rx=cfg["F_RX"]
-        )
-    elif cfg["PURE_TEST_SET"]:
-        X_test, y_test = create_pureTest_Dataset(
-            number_of_Arrays=cfg["NUMBER_OF_ARRAYS"],
-            number_of_bits=cfg["NUMBER_OF_BITS"],
-            random_state=cfg["RANDOM_SEED"],
-            time_variable=True,
-            unique=False,
-            load=False
-        )
-        [X_train, X_test, y_train, y_test, X_val, y_val] = None, X_test, None, y_test, None, None
+    dataset_path = generate_MLDataset_name(cfg)
+    if os.path.exists(dataset_path):
+        [X_train, X_test, y_train, y_test, X_val, y_val] = load_MLDataset(dataset_path)
     else:
-        [X_train, X_test, y_train, y_test, X_val, y_val] = create_Dataset(
-            number_of_Arrays=cfg["NUMBER_OF_ARRAYS"],
-            number_of_bits=cfg["NUMBER_OF_BITS"],
-            test_size=0.2,
-            random_state=cfg["RANDOM_SEED"],
-            time_variable=cfg["TIME_VARIABLE"],
-            unique=cfg["UNIQUE"],
-            f_rx=cfg["F_RX"]
-        )
+        dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = getOrCreateTimeSeriesData(cfg, Gen, t)
+        if cfg["PURE_TEST_SET"]:
+            X_test, y_test = create_pureTest_Dataset(
+                number_of_Arrays=cfg["NUMBER_OF_ARRAYS"],
+                number_of_bits=cfg["NUMBER_OF_BITS"],
+                random_state=cfg["RANDOM_SEED"],
+                time_variable=cfg["TIME_VARIABLE"],
+                unique=cfg["UNIQUE"]
+            )
+            [X_train, X_test, y_train, y_test, X_val, y_val] = None, X_test, None, y_test, None, None
+        else:
+            [X_train, X_test, y_train, y_test, X_val, y_val] = create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size=0.2, random_state=cfg["RANDOM_SEED"], time_variable=cfg["TIME_VARIABLE"])
     return [X_train, X_test, y_train, y_test, X_val, y_val]
+
+def getOrCreateTimeSeriesData(cfg, Gen, t):
+    
+    dataset_path = generate_RawDataset_name(cfg)
+    if os.path.exists(dataset_path):
+        print(f"Loading existing dataset from {dataset_path}...")
+        dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = load_RawData_from_hdf5(dataset_path)
+    else:
+        print("Creating new dataset...")
+        [dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, sequenzes] = Gen.createDataSet(t = t, number_arrays = cfg["NUMBER_OF_ARRAYS"], 
+                                                                                                                      number_bits = cfg["NUMBER_OF_BITS"], 
+                                                                                                                      unique = cfg["UNIQUE"], 
+                                                                                                                      DimReceiver = cfg["RECEIVER_DIMENSION_3D"], 
+                                                                                                                      f_rx = cfg["F_RX"], z_offset = cfg["Z_OFFSET"], 
+                                                                                                                      z_depth = cfg["Z_DEPTH"], dz = cfg["DZ"], 
+                                                                                                                      v_0 = cfg["V_0"], 
+                                                                                                                      c_0 = cfg["C_0"],
+                                                                                                                      U = cfg["U"],
+                                                                                                                      channel_radius=cfg["CHANNEL_RADIUS"],
+                                                                                                                      channel_wall_thickness=cfg["CHANNEL_WALL_THICKNESS"])
+        save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes, dataset_path, cfg)
+
+    return dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes
+    
 
 def get_model_path(cfg: dict) -> str:
     suffix = ""
@@ -98,34 +112,16 @@ def trainModel(config_path: str = "config/config.json"):
     #--------------------------------------------------------------------------------
 
     
-    if cfg["TRAIN_NEW_MODEL"]:
+    if os.path.exists(model_path):
     # Modell erstellen
         model = model_instance.create_model(
             learning_rate=cfg["LEARNING_RATE"],
-            filters=[32, 64, 128],
+            filters=cfg["FILTERS"],
             num_of_conv_Layers=cfg["NUM_OF_CONV_LAYERS"],
             lstm_units=cfg["LSTM_UNITS"],
             lstm_layers=cfg["LSTM_LAYERS"],
             dropout_rate=cfg["DROPOUT"],
         )
-
-        callbacks = [
-            ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6),
-            EarlyStopping(monitor="val_loss", patience=7, restore_best_weights=True),
-            CSVLogger("log.csv", append=True, separator=";"),
-            tf.keras.callbacks.TensorBoard(log_dir="./logs", histogram_freq=1),
-        ]
-        # Training mit den gewählten Parametern
-        model.fit(
-            X_train, y_train,
-            validation_data=(X_val, y_val),
-            batch_size=cfg["BATCH_SIZE"],
-            epochs=cfg["EPOCHS"],
-            verbose=1,
-            callbacks=callbacks,
-        )
-        
-        
         
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         model.save(model_path)
@@ -231,17 +227,10 @@ def create_config(config_path: str = "config/config.json"):
 def plot_example(config_path: str = "config/config.json"):
     cfg = load_config(config_path)
     Gen = DataGenerator()
-    dataset_path = generate_RawDataset_name(cfg)
     t = generate_Timeline(cfg["T_START"], cfg["T_STOP"], cfg["T_STEP"])
-    if os.path.exists(dataset_path):
-        print(f"Loading existing dataset from {dataset_path}...")
-        dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = load_RawData_from_hdf5(dataset_path)
-    else:
-        print("Creating new dataset...")
-        [dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, sequenzes] = Gen.createDataSet(t = t, number_arrays = cfg["NUMBER_OF_ARRAYS"], number_bits = cfg["NUMBER_OF_BITS"], unique = cfg["UNIQUE"], DimReceiver = cfg["RECEIVER_DIMENSION_3D"])
-        save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes, dataset_path, cfg)
-    z_varyRx, z_statRx, z_depth_vector, weight_function = Gen.sub_ReceiverPosition(t)
-    plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, z_varyRx, sequence_index=cfg.get("SEQUENCE_INDEX", 41))
+    dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = getOrCreateTimeSeriesData(cfg, Gen, t)
+    z_varyRx, z_statRx, z_depth_vector, weight_function = Gen.sub_ReceiverPosition(t, cfg["Z_AMPL"], cfg["F_RX"],  cfg["Z_OFFSET"], cfg["Z_DEPTH"], channel_radius=cfg["CHANNEL_RADIUS"], channel_wall_thickness=cfg["CHANNEL_WALL_THICKNESS"], U=cfg["U"])
+    plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, z_varyRx, sequence_index=cfg["SEQUENCE_INDEX"])
 
 if __name__ == "__main__":
     app()
