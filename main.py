@@ -17,6 +17,7 @@ import typer
 from model.noiseAnalytics import noiseAnalyser
 from view.plotdata import plot_noisy_signals, plot_accuracy, plot_a_sequence
 from model.DataGeneration import DataGenerator
+from model.trainer import trainModel
 
 
 app = typer.Typer()
@@ -50,7 +51,7 @@ def prepare_data(cfg, Gen, t):
     else:
         dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = getOrCreateTimeSeriesData(cfg, Gen, t)
         if cfg["PURE_TEST_SET"]:
-            X_test, y_test = create_pureTest_Dataset(
+            X_test, y_test = create_pureTest_MLDataset(
                 number_of_Arrays=cfg["NUMBER_OF_ARRAYS"],
                 number_of_bits=cfg["NUMBER_OF_BITS"],
                 random_state=cfg["RANDOM_SEED"],
@@ -110,27 +111,24 @@ def trainModel(config_path: str = "config/config.json"):
     model_path = get_model_path(cfg)
 
     #--------------------------------------------------------------------------------
-
     
-    if os.path.exists(model_path):
-    # Modell erstellen
-        model = model_instance.create_model(
-            learning_rate=cfg["LEARNING_RATE"],
-            filters=cfg["FILTERS"],
-            num_of_conv_Layers=cfg["NUM_OF_CONV_LAYERS"],
-            lstm_units=cfg["LSTM_UNITS"],
-            lstm_layers=cfg["LSTM_LAYERS"],
-            dropout_rate=cfg["DROPOUT"],
-        )
+    model = model_instance.create_model(
+        learning_rate=cfg["LEARNING_RATE"],
+        filters=cfg["FILTERS"],
+        num_of_conv_Layers=cfg["NUM_OF_CONV_LAYERS"],
+        lstm_units=cfg["LSTM_UNITS"],
+        lstm_layers=cfg["LSTM_LAYERS"],
+        dropout_rate=cfg["DROPOUT"],
+    )
+    callbacks = [
+            ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6),
+            EarlyStopping(monitor="val_loss", patience=7, restore_best_weights=True),
+            CSVLogger("log.csv", append=True, separator=";"),
+            tf.keras.callbacks.TensorBoard(log_dir="./logs", histogram_freq=1),
+        ]
+    model, trained = trainModel(model, model_path, X_train, y_train, X_val, y_val, callbacks, cfg)
         
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        model.save(model_path)
-        typer.echo(f"Modell gespeichert unter: {model_path}")
-        display_train_val_loss()
-    else:
-
-        typer.echo("Lade existierendes Modell ...")
-        model = tf.keras.models.load_model(model_path)
+    
     
 # ---------------------------------------------------------------------
 # Command: evaluate
@@ -138,7 +136,7 @@ def trainModel(config_path: str = "config/config.json"):
 @app.command()
 def evaluate(
     config_path: str = "config/config.json",
-    model_path: str = typer.Option(None, help="Pfad zum gespeicherten Modell (überschreibt Config)")
+    model_path: str = None
 ):
     
     """Lädt ein gespeichertes Modell und evaluiert es auf Testdaten."""
