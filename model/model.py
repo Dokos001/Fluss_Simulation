@@ -176,8 +176,6 @@ class CBLSTM:
 
             y_pred =  self.model.predict(feature_files, verbose = 1) 
             
-
-            
             return y_pred
     
     #-------------------------------------------------------------------------------------------------
@@ -187,7 +185,6 @@ class CBLSTM:
     #-------------------------------------------------------------------------------------------------
     def evaluate_modelDataset(self,test):
             
-
             self.model.evaluate(test, verbose = 1) 
 
 
