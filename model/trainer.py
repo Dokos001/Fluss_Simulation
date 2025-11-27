@@ -12,7 +12,7 @@ def trainModel(model, modelpath, feature_files, label_files, feature_files_val, 
     #--------------------------------------------------------------------------------
     if not os.path.exists(modelpath):
         # Training mit den gewählten Parametern
-        model.fit(
+        history = model.fit(
             feature_files, label_files,
             validation_data=(feature_files_val, label_files_val),
             batch_size=cfg["BATCH_SIZE"],
@@ -26,4 +26,13 @@ def trainModel(model, modelpath, feature_files, label_files, feature_files_val, 
         typer.echo(f"Modell trained and saved: {modelpath}")
     else:
         typer.echo("The Modell already exists. Please delete the existing model to retrain. Or skip training.")
-    return model
+    return model, history
+
+def evaluateModel(model, feature_files_test, label_files_test):
+    
+    results = model.evaluate(feature_files_test, label_files_test)
+    results = dict(zip(model.metrics_names, results))
+
+    y_pred = model.predict(feature_files_test)
+
+    return y_pred,results

@@ -3,6 +3,7 @@ import re
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+from sklearn.utils import shuffle
 from model.DataGeneration import DataGenerator
 from sklearn.model_selection import train_test_split
 import h5py
@@ -31,62 +32,55 @@ def display_train_val_loss():
     
 def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, random_state, time_variable = True):
     
+    X_test_pure, y_test_pure = shuffle(dist_sequenzes_noisy, sequenzes, random_state=random_state)
+    
     X_train, X_test, y_train, y_test = train_test_split(
         dist_sequenzes_noisy, sequenzes, test_size=test_size, random_state=random_state
     )
+    
     X_train, X_val, y_train, y_val                  = train_test_split(X_train, y_train, test_size=0.20, random_state=random_state)
     X_train, X_test, y_train, y_test, X_val, y_val  = map(np.array, [X_train, X_test, y_train, y_test, X_val, y_val])
     X_train = (X_train - np.mean(X_train)) / np.std(X_train)
     X_test  = (X_test - np.mean(X_test)) / np.std(X_test)
     X_val   = (X_val - np.mean(X_val)) / np.std(X_val)
+    X_test_pure  = (X_test_pure - np.mean(X_test_pure)) / np.std(X_test_pure)
+    
 
+    splits = {
+    "X_train": X_train,
+    "y_train": y_train,
+    "X_test": X_test,
+    "y_test": y_test,
+    "X_val": X_val,
+    "y_val": y_val,
+    "X_test_pure": X_test_pure,
+    "y_test_pure": y_test_pure,
+}
 
-    df = pd.DataFrame(X_train)
-    df.to_csv(os.path.join(output_dir,dataset_path),header=False, index=False)
-    df = pd.DataFrame(y_train)
-    df.to_csv(os.path.join(output_dir,dataset_path),header=False, index=False) 
-    df = pd.DataFrame(X_test)
-    df.to_csv(os.path.join(output_dir,dataset_path),header=False, index=False) 
-    df = pd.DataFrame(y_test)
-    df.to_csv(os.path.join(output_dir,dataset_path),header=False, index=False) 
-    df = pd.DataFrame(X_val)
-    df.to_csv(os.path.join(output_dir,dataset_path),header=False, index=False) 
-    df = pd.DataFrame(y_val)
-    df.to_csv(os.path.join(output_dir,dataset_path),header=False, index=False)
+    for name, data in splits.items():
+        pd.DataFrame(data).to_csv(
+            os.path.join(dataset_path, f"{name}.csv"),
+            header=False,
+            index=False
+        )
 
-    return X_train, X_test, y_train, y_test, X_val, y_val
+    return X_train, X_test, y_train, y_test, X_val, y_val, X_test_pure, y_test_pure
 
 def load_MLDataset(dataset_path):
     
 
-    X_train = pd.read_csv(os.path.join(output_dir,dataset_path), header=None).to_numpy()
-    y_train = pd.read_csv(os.path.join(output_dir,dataset_path), header=None).to_numpy()
-    X_test  = pd.read_csv(os.path.join(output_dir,dataset_path), header=None).to_numpy()
-    y_test  = pd.read_csv(os.path.join(output_dir,dataset_path), header=None).to_numpy()
-    X_val   = pd.read_csv(os.path.join(output_dir,dataset_path), header=None).to_numpy()
-    y_val   = pd.read_csv(os.path.join(output_dir,dataset_path), header=None).to_numpy()
+    X_train = pd.read_csv(os.path.join(dataset_path,"X_train"), header=None).to_numpy()
+    y_train = pd.read_csv(os.path.join(dataset_path,"y_train"), header=None).to_numpy()
+    X_test  = pd.read_csv(os.path.join(dataset_path,"X_test"), header=None).to_numpy()
+    y_test  = pd.read_csv(os.path.join(dataset_path,"y_test"), header=None).to_numpy()
+    X_val   = pd.read_csv(os.path.join(dataset_path,"X_val"), header=None).to_numpy()
+    y_val   = pd.read_csv(os.path.join(dataset_path,"y_val"), header=None).to_numpy()
 
     return X_train, X_test, y_train, y_test, X_val, y_val
 
-def create_pureTest_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes):
-    
-    
-    if load: 
-        X_test  = pd.read_csv(os.path.join(output_dir,"X_test"+string+dataset_path), header=None).to_numpy()
-        y_test  = pd.read_csv(os.path.join(output_dir,"y_test"+string+dataset_path), header=None).to_numpy()
-    else:
-        X_test = dist_sequenzes_noisy
-            
-        X_test = (X_test - np.mean(X_test)) / np.std(X_test)
-        y_test = sequenzes
-        
-        string = "_pureTestSet"
-        
-        df = pd.DataFrame(X_test)
-        df.to_csv(os.path.join(output_dir,"X_test"+string+dataset_path),header=False, index=False) 
-        df = pd.DataFrame(y_test)
-        df.to_csv(os.path.join(output_dir,"y_test"+string+dataset_path),header=False, index=False)
-
+def load_pureTest_MLDataset(dataset_path):
+    X_test  = pd.read_csv(os.path.join(dataset_path,"X_test_pure"), header=None).to_numpy()
+    y_test  = pd.read_csv(os.path.join(dataset_path,"y_test_pure"), header=None).to_numpy()
 
     return X_test, y_test
 
@@ -167,6 +161,28 @@ def generate_MLDataset_name(cfg):
     save_dir = "./MLDatasets"
     os.makedirs(save_dir, exist_ok=True)
 
+    filter_str = "-".join(str(f) for f in cfg["FILTERS"])
+
+    model_name = (
+        f"bs{sanitize(cfg['BATCH_SIZE'])}"
+        f"_ep{sanitize(cfg['EPOCHS'])}"
+        f"_arrays{sanitize(cfg['NUMBER_OF_ARRAYS'])}"
+        f"_bits{sanitize(cfg['NUMBER_OF_BITS'])}"
+        f"_lr{sanitize(cfg['LEARNING_RATE'])}"
+        f"_filters{filter_str}"
+        f"_conv{sanitize(cfg['NUM_OF_CONV_LAYERS'])}"
+        f"_lstmU{sanitize(cfg['LSTM_UNITS'])}"
+        f"_lstmL{sanitize(cfg['LSTM_LAYERS'])}"
+        f"_do{sanitize(cfg['DROPOUT'])}"
+    )
+
+    model_name = os.path.join(save_dir, model_name)
+    return model_name
+
+def generate_Model_name(cfg):
+    save_dir = "./NNModels"
+    os.makedirs(save_dir, exist_ok=True)
+
     dataset_name = (
         f"b{cfg['NUMBER_OF_BITS']}"
         f"_f{sanitize(cfg['F_RX'])}"
@@ -181,8 +197,23 @@ def generate_MLDataset_name(cfg):
         f"_{'3d' if cfg['RECEIVER_DIMENSION_3D'] else '2d'}"
     )
 
-    dataset_name += "_complete_dataset"
     dataset_name = os.path.join(save_dir, dataset_name)
-    dataset_name += ".csv"
     return dataset_name
-    
+
+def save_results(csv_path, model_name, results: dict):
+
+    row = {"model_name": model_name}
+    row.update(results)
+
+    if not os.path.exists(csv_path):
+        df = pd.DataFrame([row]).to_csv(csv_path, index=False)
+        print(f"Created results.csv: {csv_path}")
+    else:
+        df = pd.read_csv(csv_path)
+        for key in row.keys():
+            if key not in df.columns:
+                df[key] = None
+        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+        df.to_csv(csv_path, index=False)
+        print(f"Updated results.csv: {csv_path}")
+        
