@@ -34,6 +34,7 @@ class CBLSTM:
                 tf.get_logger().setLevel('DEBUG')
                 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
                 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+                print("TF version:", tf.__version__)
                 gpus = tf.config.list_physical_devices('GPU')
                 print(gpus)
                 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
@@ -188,6 +189,11 @@ class CBLSTM:
             
 
             self.model.evaluate(test, verbose = 1) 
+
+
+    
+if __name__ == "__main__":
+    cnn_lstm = CBLSTM()
 
 
             
