@@ -5,6 +5,8 @@ import tensorflow as tf
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import BinaryCrossentropy
+from tensorflow.keras.metrics import Accuracy, Precision, Recall, BinaryCrossentropy, F1Score
+from tensorflow.python.eager import context
 
 class CBLSTM:
 
@@ -32,12 +34,12 @@ class CBLSTM:
                 print("TF version:", tf.__version__)
                 print("Cuda Version:",tf.sysconfig.get_build_info()["cuda_version"])
                 print("cuDNN Version:",tf.sysconfig.get_build_info()["cudnn_version"])
+                print("CuDNN enabled:", context.context().num_gpus() > 0 and tf.config.list_physical_devices("GPU"))
                 gpus = tf.config.list_physical_devices('GPU')
                 print(gpus)
                 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
                 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
                 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
-                tf.config.optimizer.set_jit(False)
 
 
                 if batch_size == None:
@@ -100,10 +102,11 @@ class CBLSTM:
         adam = tf.keras.optimizers.Adam(learning_rate = learning_rate, clipnorm=1.0)
         # Compile the model
         
-        loss_fn = BinaryCrossentropy(from_logits=False)  # Falls Sigmoid verwendet wir
-        mdl.compile(optimizer=adam, loss=loss_fn, metrics=['accuracy', 'f1_score', tf.keras.metrics.BinaryCrossentropy(), 'precision'])
+        loss_fn = BinaryCrossentropy(from_logits=False)  
+        #mdl.compile(optimizer=adam, loss=loss_fn, metrics=[Accuracy(), F1Score(), BinaryCrossentropy() , Precision(), Recall()])
+        mdl.compile(optimizer=adam, loss = 'binary_crossentropy', metrics=['accuracy'])
         # Summary of the model
-        #mdl.summary()
+        mdl.summary()
         self.model = mdl
         return mdl
     
