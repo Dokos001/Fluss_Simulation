@@ -33,6 +33,8 @@ def display_train_val_loss():
 def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, random_state, time_variable = True):
     
     X_test_pure, y_test_pure = shuffle(dist_sequenzes_noisy, sequenzes, random_state=random_state)
+    print(f"Total dataset size: {len(dist_sequenzes_noisy)} samples")
+    print(f"Dataset shape: {np.array(dist_sequenzes_noisy).shape}")
     
     X_train, X_test, y_train, y_test = train_test_split(
         dist_sequenzes_noisy, sequenzes, test_size=test_size, random_state=random_state
@@ -56,7 +58,8 @@ def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, r
     "X_test_pure": X_test_pure,
     "y_test_pure": y_test_pure,
 }
-
+    if not os.path.exists(dataset_path):
+        os.makedirs(dataset_path)
     for name, data in splits.items():
         pd.DataFrame(data).to_csv(
             os.path.join(dataset_path, f"{name}.csv"),
@@ -69,18 +72,18 @@ def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, r
 def load_MLDataset(dataset_path):
     
 
-    X_train = pd.read_csv(os.path.join(dataset_path,"X_train"), header=None).to_numpy()
-    y_train = pd.read_csv(os.path.join(dataset_path,"y_train"), header=None).to_numpy()
-    X_test  = pd.read_csv(os.path.join(dataset_path,"X_test"), header=None).to_numpy()
-    y_test  = pd.read_csv(os.path.join(dataset_path,"y_test"), header=None).to_numpy()
-    X_val   = pd.read_csv(os.path.join(dataset_path,"X_val"), header=None).to_numpy()
-    y_val   = pd.read_csv(os.path.join(dataset_path,"y_val"), header=None).to_numpy()
+    X_train = pd.read_csv(os.path.join(dataset_path,"X_train.csv"), header=None).to_numpy()
+    y_train = pd.read_csv(os.path.join(dataset_path,"y_train.csv"), header=None).to_numpy()
+    X_test  = pd.read_csv(os.path.join(dataset_path,"X_test.csv"), header=None).to_numpy()
+    y_test  = pd.read_csv(os.path.join(dataset_path,"y_test.csv"), header=None).to_numpy()
+    X_val   = pd.read_csv(os.path.join(dataset_path,"X_val.csv"), header=None).to_numpy()
+    y_val   = pd.read_csv(os.path.join(dataset_path,"y_val.csv"), header=None).to_numpy()
 
     return X_train, X_test, y_train, y_test, X_val, y_val
 
 def load_pureTest_MLDataset(dataset_path):
-    X_test  = pd.read_csv(os.path.join(dataset_path,"X_test_pure"), header=None).to_numpy()
-    y_test  = pd.read_csv(os.path.join(dataset_path,"y_test_pure"), header=None).to_numpy()
+    X_test  = pd.read_csv(os.path.join(dataset_path,"X_test_pure.csv"), header=None).to_numpy()
+    y_test  = pd.read_csv(os.path.join(dataset_path,"y_test_pure.csv"), header=None).to_numpy()
 
     return X_test, y_test
 
@@ -164,16 +167,18 @@ def generate_MLDataset_name(cfg):
     filter_str = "-".join(str(f) for f in cfg["FILTERS"])
 
     model_name = (
-        f"bs{sanitize(cfg['BATCH_SIZE'])}"
-        f"_ep{sanitize(cfg['EPOCHS'])}"
         f"_arrays{sanitize(cfg['NUMBER_OF_ARRAYS'])}"
         f"_bits{sanitize(cfg['NUMBER_OF_BITS'])}"
-        f"_lr{sanitize(cfg['LEARNING_RATE'])}"
-        f"_filters{filter_str}"
-        f"_conv{sanitize(cfg['NUM_OF_CONV_LAYERS'])}"
-        f"_lstmU{sanitize(cfg['LSTM_UNITS'])}"
-        f"_lstmL{sanitize(cfg['LSTM_LAYERS'])}"
-        f"_do{sanitize(cfg['DROPOUT'])}"
+        f"_f{sanitize(cfg['F_RX'])}"
+        f"_v{sanitize(cfg['V_0'])}"
+        f"_dz{sanitize(cfg['DZ'])}"
+        f"_U{sanitize(cfg['U'])}"
+        f"_r{sanitize(cfg['CHANNEL_RADIUS'])}"
+        f"_zo{sanitize(cfg['Z_OFFSET'])}"
+        f"_z{sanitize(cfg['Z_DEPTH'])}"
+        f"_rate{sanitize(cfg['BIT_RATE'])}"
+        f"_duration{sanitize(cfg['T_STOP'] - cfg['T_START'])}"
+        f"_{'3d' if cfg['RECEIVER_DIMENSION_3D'] else '2d'}"
     )
 
     model_name = os.path.join(save_dir, model_name)

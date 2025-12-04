@@ -83,7 +83,7 @@ def getOrCreateTimeSeriesData(cfg, Gen, t):
 #-------------------------- Hauptprogramm ----------------------------------------
 
 @app.command()
-def trainModel(config_path: str = "config/config.json"):
+def startTraining(config_path: str = "config/config.json"):
     """
     Trains the model based on the configuration.
     
@@ -105,7 +105,7 @@ def trainModel(config_path: str = "config/config.json"):
 
     #--------------------------------------------------------------------------------
     
-    model = model_instance.create_model(
+    model = model_instance.create_model(cfg=cfg,
         learning_rate=cfg["LEARNING_RATE"],
         filters=cfg["FILTERS"],
         num_of_conv_Layers=cfg["NUM_OF_CONV_LAYERS"],

@@ -6,17 +6,12 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import BinaryCrossentropy
 
-
-
-
 class CBLSTM:
 
     model = []
     trained = []
     learning_rate = []
     batch_size = 2
-
-
     #-------------------------------------------------------------------------------------------------
     #       Initialisierungsfunktion
     #
@@ -35,11 +30,14 @@ class CBLSTM:
                 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
                 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
                 print("TF version:", tf.__version__)
+                print("Cuda Version:",tf.sysconfig.get_build_info()["cuda_version"])
+                print("cuDNN Version:",tf.sysconfig.get_build_info()["cudnn_version"])
                 gpus = tf.config.list_physical_devices('GPU')
                 print(gpus)
                 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
                 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
                 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+                tf.config.optimizer.set_jit(False)
 
 
                 if batch_size == None:
@@ -52,11 +50,11 @@ class CBLSTM:
                 else:
                         self.learning_rate = learning_rate
 
-    def create_model(self,learning_rate = 0.0001, filters = [32,64,128], num_of_conv_Layers = 3, lstm_units = 128, lstm_layers = 2, dropout_rate = 0.2):
+    def create_model(self, cfg, learning_rate = 0.0001, filters = [32,64,128], num_of_conv_Layers = 3, lstm_units = 128, lstm_layers = 2, dropout_rate = 0.2):
         # Initialize the model
         first = True
 
-        input_shape = (2000,1)
+        input_shape = (int((cfg["T_STOP"] - cfg["T_START"])/cfg["T_STEP"]),1)
 
         filters = filters
 
@@ -95,7 +93,7 @@ class CBLSTM:
 
         #glob = layers.GlobalAveragePooling1D()(bidirec)
         #flatten = layers.Flatten()(glob)
-        softmax = layers.Dense(13, activation='sigmoid')(bidirec)
+        softmax = layers.Dense(int(cfg["NUMBER_OF_BITS"]), activation='sigmoid')(bidirec)
 
         mdl = tf.keras.Model(inputs=inputs, outputs=softmax)
 
