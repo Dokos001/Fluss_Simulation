@@ -1,20 +1,25 @@
 import os
 
+from matplotlib import pyplot as plt
 import numpy as np
 
+from model.tools import save_results
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import tensorflow as tf
 import typer
 
 from model.model import CBLSTM
 
 
-def trainModel(model, modelpath, feature_files, label_files, feature_files_val, label_files_val, callbacks, cfg):
+def trainModel(model, modelpath, feature_files, label_files, feature_files_val, label_files_val, callbacks, batch_size, epochs):
 
     print("feature_files_shape", feature_files.shape)
     print("label_files_shape",label_files.shape)
 
-    trainGenerator = ValueDataGenerator(feature_files, label_files, batch_size=cfg["BATCH_SIZE"])
-    valGenerator = ValueDataGenerator(feature_files_val, label_files_val, batch_size=cfg["BATCH_SIZE"])
+    trainGenerator = ValueDataGenerator(feature_files, label_files, batch_size=batch_size)
+    valGenerator = ValueDataGenerator(feature_files_val, label_files_val, batch_size=batch_size)
+
+    history = []
 
     #--------------------------------------------------------------------------------
     if not os.path.exists(modelpath):
@@ -22,7 +27,7 @@ def trainModel(model, modelpath, feature_files, label_files, feature_files_val, 
         history = model.fit(
             trainGenerator,
             validation_data=valGenerator,
-            epochs=cfg["EPOCHS"],
+            epochs=epochs,
             verbose=1,
             callbacks=callbacks,
         )
@@ -34,12 +39,30 @@ def trainModel(model, modelpath, feature_files, label_files, feature_files_val, 
         typer.echo("The Modell already exists. Please delete the existing model to retrain. Or skip training.")
     return model, history
 
-def evaluateModel(model, feature_files_test, label_files_test):
+def evaluateModel(cfg, model, modelpath, feature_files_test, label_files_test):
     
-    results = model.evaluate(feature_files_test, label_files_test)
-    results = dict(zip(model.metrics_names, results))
+    results = model.evaluate(feature_files_test, label_files_test, verbose=1, return_dict=True)
+
 
     y_pred = model.predict(feature_files_test)
+
+    # --------------------- Metrics ------------------------------
+    bin_pred = np.array([np.where(p > 0.5, 1, 0) for p in y_pred])
+
+    
+    ber = np.mean(np.not_equal(bin_pred, label_files_test))
+    print("Global BER:", ber)
+    
+    results["GlobalBER"] = float(ber)
+
+
+
+    resultsdir = "./results"
+    save_results(cfg, resultsdir, results)
+
+    
+    typer.echo(f"BER: {ber:.6f}")
+    typer.echo("Evaluation abgeschlossen.")
 
     return y_pred,results
 

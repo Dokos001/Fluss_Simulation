@@ -11,7 +11,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.callbacks import CSVLogger
 import pandas as pd
 from sklearn.metrics import accuracy_score
-from model.tools import display_train_val_loss, generate_MLDataset_name, generate_Model_name, load_MLDataset, create_MLDataset, generate_RawDataset_name, load_RawData_from_hdf5, load_pureTest_MLDataset,save_complete_dataset, generate_Timeline, save_results
+from model.tools import change_config, display_train_val_loss, generate_MLDataset_name, generate_Model_name, load_MLDataset, create_MLDataset, generate_RawDataset_name, load_RawData_from_hdf5, load_pureTest_MLDataset,save_complete_dataset, generate_Timeline, save_results, logModelParameters, logTestbedParameters
 import random, os
 import typer
 from model.noiseAnalytics import noiseAnalyser
@@ -21,6 +21,9 @@ from model.trainer import evaluateModel, trainModel
 
 
 app = typer.Typer()
+
+modelLogDir = "./indexlogs/modellogs"
+testbedLogDir = "./indexlogs/testbedlogs"
 
 
 # ---------------------------------------------------------------------
@@ -42,23 +45,29 @@ def set_random_seed(seed: int):
     random.seed(seed)
     tf.random.set_seed(seed)
 
-def prepare_data(cfg, Gen, t):
+def prepare_data(cfg, dataset_path, MLDataset_path, Gen, t, random_state=42):
     """Erzeugt oder lädt die Trainings-/Testdaten entsprechend der Konfiguration."""
     [X_train, X_test, y_train, y_test, X_val, y_val] = None, None, None, None, None, None
-    dataset_path = generate_MLDataset_name(cfg)
-    if os.path.exists(dataset_path):
+    print(dataset_path)
+    if os.path.exists(MLDataset_path):
+        print("Dataset exists. Loading MLDataset..."+dataset_path)
         if cfg["PURE_TEST_SET"]:
-            X_test, y_test = load_pureTest_MLDataset(dataset_path)
+            X_test, y_test = load_pureTest_MLDataset(MLDataset_path)
         else:
-            [X_train, X_test, y_train, y_test, X_val, y_val] = load_MLDataset(dataset_path)
+            [X_train, X_test, y_train, y_test, X_val, y_val] = load_MLDataset(MLDataset_path)
     else:
-        dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = getOrCreateTimeSeriesData(cfg, Gen, t)
-        [X_train, X_test, y_train, y_test, X_val, y_val, X_test_pure, y_test_pure] = create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size=0.2, random_state=cfg["RANDOM_SEED"], time_variable=cfg["TIME_VARIABLE"])
+        print("MLDataset does not exist. Creating MLDataset...")
+        if not os.path.exists(dataset_path):
+            print("Raw Dataset does not exist. Creating Raw Dataset...")
+            dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = getOrCreateTimeSeriesData(cfg, dataset_path, Gen, t)
+        else:
+            print("Loading existing Raw Dataset...")
+            dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = load_RawData_from_hdf5(dataset_path)
+        [X_train, X_test, y_train, y_test, X_val, y_val, X_test_pure, y_test_pure] = create_MLDataset(MLDataset_path, dist_sequenzes_noisy, sequenzes, test_size=0.2, random_state=random_state)
     return [X_train, X_test, y_train, y_test, X_val, y_val]
 
-def getOrCreateTimeSeriesData(cfg, Gen, t):
+def getOrCreateTimeSeriesData(cfg, dataset_path, Gen, t):
     
-    dataset_path = generate_RawDataset_name(cfg)
     if os.path.exists(dataset_path):
         print(f"Loading existing dataset from {dataset_path}...")
         dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = load_RawData_from_hdf5(dataset_path)
@@ -68,7 +77,7 @@ def getOrCreateTimeSeriesData(cfg, Gen, t):
                                                                                                                       number_bits = cfg["NUMBER_OF_BITS"], 
                                                                                                                       unique = cfg["UNIQUE"], 
                                                                                                                       DimReceiver = cfg["RECEIVER_DIMENSION_3D"], 
-                                                                                                                      f_rx = cfg["F_RX"], z_offset = cfg["Z_OFFSET"], 
+                                                                                                                      f_rx = cfg["F_RX"], z_ampl = cfg["Z_AMPL"], z_offset = cfg["Z_OFFSET"], 
                                                                                                                       z_depth = cfg["Z_DEPTH"], dz = cfg["DZ"], 
                                                                                                                       v_0 = cfg["V_0"], 
                                                                                                                       c_0 = cfg["C_0"],
@@ -78,6 +87,37 @@ def getOrCreateTimeSeriesData(cfg, Gen, t):
         save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes, dataset_path, cfg)
 
     return dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes
+
+def getModelandTestbedName(config_path: str = "config/config.json", modelcfg_path: str = "config/config_model.json", testbedcfg_path: str = "config/config_testbed.json"):
+    cfg = load_config(config_path)
+    modelcfg = load_config(modelcfg_path)
+    testbedcfg = load_config(testbedcfg_path)
+    if cfg["TRAIN_NEW_MODEL"]:
+        model_path, model_name = generate_Model_name(modelcfg)
+        change_config("TRAIN_NEW_MODEL", False, config_path)
+        change_config("MODEL_PATH", model_path, config_path)
+        change_config("MODEL_NAME", model_name, config_path)
+    if cfg["GENERATE_NEW_TESTBED"]:
+        testbed_path, testbed_name = generate_RawDataset_name()
+        change_config("GENERATE_NEW_TESTBED", False, config_path)
+        change_config("TESTBED_PATH", testbed_path, config_path)
+        change_config("TESTBED_NAME", testbed_name, config_path)
+        name = os.path.splitext(os.path.basename(testbed_name))[0]
+        MLDataset_path = os.path.join("./MLDatasets", name+"_MLDataset")
+        change_config("MLDATASET_NAME", MLDataset_path, config_path)
+    cfg = load_config(config_path)  # Reload config to get updated names
+
+    model_name = cfg["MODEL_NAME"]
+    model_path = cfg["MODEL_PATH"]
+    testbed_name = cfg["TESTBED_NAME"]
+    testbed_path = cfg["TESTBED_PATH"]
+    MLDataset_path = cfg["MLDATASET_NAME"]
+
+
+    logModelParameters(modelLogDir, model_name, modelcfg)
+    logTestbedParameters(testbedLogDir, testbed_name, testbedcfg)
+    
+    return model_path, model_name, testbed_path, testbed_name, MLDataset_path
     
 
 #-------------------------- Hauptprogramm ----------------------------------------
@@ -92,34 +132,43 @@ def startTraining(config_path: str = "config/config.json"):
     """
 
     cfg = load_config(config_path)
+    testbedcfg = load_config("config/config_testbed.json")
+    modelcfg = load_config("config/config_model.json")
     Gen = DataGenerator()
-    t = generate_Timeline(cfg["T_START"], cfg["T_STOP"], cfg["T_STEP"])
+    t = generate_Timeline(testbedcfg["T_START"], testbedcfg["T_STOP"], testbedcfg["T_STEP"])
     #-------------------------- Random Parameter initialization ---------------------
 
     set_random_seed(cfg["RANDOM_SEED"])
 
     #--------------------------------------------------------------------------------
-    X_train, X_test, y_train, y_test, X_val, y_val = prepare_data(cfg, Gen, t)
+    model_path, model_name, testbed_path, testbed_name, MLDataset_path = getModelandTestbedName(config_path, modelcfg_path="config/config_model.json", testbedcfg_path="config/config_testbed.json")
+    X_train, X_test, y_train, y_test, X_val, y_val = prepare_data(testbedcfg, testbed_path, MLDataset_path, Gen, t, random_state=cfg["RANDOM_SEED"])
     model_instance = CBLSTM() # create an instance of the model class
-    model_path = generate_Model_name(cfg)
+    
 
     #--------------------------------------------------------------------------------
     
-    model = model_instance.create_model(cfg=cfg,
-        learning_rate=cfg["LEARNING_RATE"],
-        filters=cfg["FILTERS"],
-        num_of_conv_Layers=cfg["NUM_OF_CONV_LAYERS"],
-        lstm_units=cfg["LSTM_UNITS"],
-        lstm_layers=cfg["LSTM_LAYERS"],
-        dropout_rate=cfg["DROPOUT"],
+    model = model_instance.create_model(cfg=modelcfg, testbedcfg=testbedcfg,
+        learning_rate=modelcfg["LEARNING_RATE"],
+        filters=modelcfg["FILTERS"],
+        num_of_conv_Layers=modelcfg["NUM_OF_CONV_LAYERS"],
+        lstm_units=modelcfg["LSTM_UNITS"],
+        lstm_layers=modelcfg["LSTM_LAYERS"],
+        dropout_rate=modelcfg["DROPOUT"],
     )
     callbacks = [
             ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6),
             EarlyStopping(monitor="val_loss", patience=7, restore_best_weights=True),
-            CSVLogger("log.csv", append=True, separator=";"),
+            #CSVLogger("log.csv", append=False, separator=";"),
             tf.keras.callbacks.TensorBoard(log_dir="./logs", histogram_freq=1),
         ]
-    model, history = trainModel(model, model_path, X_train, y_train, X_val, y_val, callbacks, cfg)
+    model, history = trainModel(model, model_path, X_train, y_train, X_val, y_val, callbacks, modelcfg["BATCH_SIZE"], modelcfg["EPOCHS"])
+    
+    history_df = pd.DataFrame(history.history)
+    hist_csv_path = os.path.join(os.path.dirname(model_path), model_name, testbed_name,  "training_history.csv")
+    os.makedirs(os.path.dirname(hist_csv_path), exist_ok=True)
+    with open(hist_csv_path, mode='w+') as f:
+        history_df.to_csv(f)
 
     
 # ---------------------------------------------------------------------
@@ -137,49 +186,68 @@ def evaluate(
     """
     # --------------------- Config laden -------------------------
     cfg = load_config(config_path)
+    testbedcfg = load_config("config/config_testbed.json")
+    modelcfg = load_config("config/config_model.json")
+
+    # --------------------- Model- und Testbednamen holen ---------
+    model_path, model_name, testbed_path, testbed_name, MLDataset_path = getModelandTestbedName(config_path, modelcfg_path="config/config_model.json", testbedcfg_path="config/config_testbed.json")
 
     # --------------------- Seeds setzen -------------------------
     set_random_seed(cfg["RANDOM_SEED"])
 
     # --------------------- Daten vorbereiten --------------------
-    X_train, X_test, y_train, y_test, X_val, y_val = prepare_data(cfg)
+    Gen = DataGenerator()
+    t = generate_Timeline(testbedcfg["T_START"], testbedcfg["T_STOP"], testbedcfg["T_STEP"])
+    X_train, X_test, y_train, y_test, X_val, y_val = prepare_data(testbedcfg, dataset_path= testbed_path, MLDataset_path=MLDataset_path, Gen=Gen, t=t, random_state=cfg["RANDOM_SEED"])
 
     # --------------------- Modell erstellen ---------------------
-    model_instance = CBLSTM()
-    model_path = generate_Model_name(cfg)
-
-    model = model_instance.create_model(
-        learning_rate=cfg["LEARNING_RATE"],
-        filters=cfg["FILTERS"],
-        num_of_conv_Layers=cfg["NUM_OF_CONV_LAYERS"],
-        lstm_units=cfg["LSTM_UNITS"],
-        lstm_layers=cfg["LSTM_LAYERS"],
-        dropout_rate=cfg["DROPOUT"]
-    )
-
+    model_path = cfg["MODEL_PATH"]
     # --------------------- Gewichte laden -----------------------
     if os.path.exists(model_path):
-        model.load_weights(model_path)
+        model = tf.keras.saving.load_model(model_path)
     else:
         typer.echo("No existing model found at the specified path.")
         return
 
     # --------------------- Evaluation im Trainer ----------------
-    y_pred, results = evaluateModel(model, X_test, y_test)
+    y_pred, results = evaluateModel(cfg, model, model_path, X_test, y_test)
 
-    # --------------------- Metrics ------------------------------
-    bin_pred = [np.where(p > 0.5, 1, 0) for p in y_pred]
+@app.command()
+def generateMLDatasetOutOFRawDataset(config_path: str = "config/config.json"):
+    """
+    Generates an MLDataset from a RawDataset based on the configuration.
+    
+    :param config_path: Path to the configuration file.
+    :type config_path: str
+    """
+    cfg = load_config(config_path)
+    #-------------------------- Random Parameter initialization ---------------------
 
-    acc = accuracy_score(y_test, bin_pred)
-    ber = np.mean(np.not_equal(bin_pred, y_test))
+    set_random_seed(cfg["RANDOM_SEED"])
 
-    resultsdir = "./results"
-    save_results(resultsdir, model_path, results)
+    #--------------------------------------------------------------------------------
+    model_path, testbed_path, MLDataset_path = getModelandTestbedName(config_path, modelcfg_path="config/config_model.json", testbedcfg_path="config/config_testbed.json")
+    dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = load_RawData_from_hdf5(testbed_path)
+    [X_train, X_test, y_train, y_test, X_val, y_val, X_test_pure, y_test_pure] = create_MLDataset(MLDataset_path, dist_sequenzes_noisy, sequenzes, test_size=0.2, random_state=cfg["RANDOM_SEED"])
 
-    typer.echo(f"Accuracy: {acc:.4f}")
-    typer.echo(f"BER: {ber:.6f}")
-    typer.echo("Evaluation abgeschlossen.")
-
+@app.command()
+def displayAndSaveLogGraphs(config_path: str = "config/config.json"):
+    """
+    Displays and saves training and validation loss graphs based on the configuration.
+    
+    :param config_path: Path to the configuration file.
+    :type config_path: str
+    """
+    cfg = load_config(config_path)
+    model_path = cfg["MODEL_PATH"]
+    model_name = cfg["MODEL_NAME"]
+    testbed_name = cfg["TESTBED_NAME"]
+    hist_csv_path = os.path.join(os.path.dirname(model_path), model_name, testbed_name,  "training_history.csv")
+    if os.path.exists(hist_csv_path):
+        history_df = pd.read_csv(hist_csv_path)
+        display_train_val_loss(history_df= history_df, model_path=model_path, testbed_name=testbed_name)
+    else:
+        typer.echo("No training history found at the specified path.")
 
 @app.command()
 def analyse_noise(config_path: str = "config/config.json"):
@@ -218,6 +286,9 @@ def show_config(config_path: str = "config/config.json"):
     cfg = load_config(config_path)
     typer.echo(json.dumps(cfg, indent=4))
 
+
+
+# Currently non functional
 @app.command()
 def create_config(config_path: str = "config/config.json"):
     """
@@ -249,7 +320,18 @@ def create_config(config_path: str = "config/config.json"):
     os.makedirs(os.path.dirname(config_path), exist_ok=True)
     with open(config_path, "w") as f:
         json.dump(default_cfg, f, indent=4)
-    typer.echo(f"Standardkonfiguration erstellt unter: {config_path}")
+    typer.echo(f"Standard configuration created at: {config_path}")
+
+# ---------------------------------------------------------------------
+@app.command()
+def trychangingConfig():
+    """
+    Tries changing a configuration parameter.
+    """
+    config_path = "config/config.json"
+    change_config("TESTBED_NAME", "new_testbed_name", config_path)
+    cfg = load_config(config_path)
+    print(cfg["TESTBED_NAME"])
 
 @app.command()
 def plot_example(config_path: str = "config/config.json"):
@@ -260,10 +342,12 @@ def plot_example(config_path: str = "config/config.json"):
     :type config_path: str
     """
     cfg = load_config(config_path)
+    testbedcfg = load_config("config/config_testbed.json")
+    datasetpath = cfg["TESTBED_PATH"]
     Gen = DataGenerator()
-    t = generate_Timeline(cfg["T_START"], cfg["T_STOP"], cfg["T_STEP"])
-    dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = getOrCreateTimeSeriesData(cfg, Gen, t)
-    z_varyRx, z_statRx, z_depth_vector, weight_function = Gen.sub_ReceiverPosition(t, cfg["Z_AMPL"], cfg["F_RX"],  cfg["Z_OFFSET"], cfg["Z_DEPTH"], channel_radius=cfg["CHANNEL_RADIUS"], channel_wall_thickness=cfg["CHANNEL_WALL_THICKNESS"], U=cfg["U"])
+    t = generate_Timeline(testbedcfg["T_START"], testbedcfg["T_STOP"], testbedcfg["T_STEP"])
+    dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = getOrCreateTimeSeriesData(testbedcfg,datasetpath, Gen, t)
+    z_varyRx, z_statRx, z_depth_vector, weight_function = Gen.sub_ReceiverPosition(t, testbedcfg["Z_AMPL"], testbedcfg["F_RX"],  testbedcfg["Z_OFFSET"], testbedcfg["Z_DEPTH"], channel_radius=testbedcfg["CHANNEL_RADIUS"], channel_wall_thickness=testbedcfg["CHANNEL_WALL_THICKNESS"], U=testbedcfg["U"])
     plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, z_varyRx, sequence_index=cfg["SEQUENCE_INDEX"])
 
 if __name__ == "__main__":

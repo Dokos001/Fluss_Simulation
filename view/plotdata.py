@@ -128,6 +128,8 @@ def plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ide
     plt.xlabel("Frequency [Hz]")
     plt.ylabel("Amplitude")
     plt.grid(True, alpha=0.3)
+    plt.xlim(0, 1)
+    plt.ylim(0, max(yf_dist)*0.4)
     plt.tight_layout()
 
     plt.subplot(2,1,2)
@@ -136,6 +138,8 @@ def plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ide
     plt.xlabel("Frequency [Hz]")
     plt.ylabel("Amplitude")
     plt.grid(True, alpha=0.3)
+    plt.xlim(0, 1)
+    plt.ylim(0, max(yf_ideal)*0.4)
     plt.tight_layout()
     plt.savefig('./example_sequence_fft.png', dpi=300)
     plt.show()
@@ -185,4 +189,3 @@ def plot_accuracy(snrs, accuracies):
     plt.ylabel("Accuracy")
     plt.grid(True)
     plt.show()
-

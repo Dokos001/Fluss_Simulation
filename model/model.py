@@ -52,11 +52,11 @@ class CBLSTM:
                 else:
                         self.learning_rate = learning_rate
 
-    def create_model(self, cfg, learning_rate = 0.0001, filters = [32,64,128], num_of_conv_Layers = 3, lstm_units = 128, lstm_layers = 2, dropout_rate = 0.2):
+    def create_model(self, cfg, testbedcfg, learning_rate = 0.0001, filters = [32,64,128], num_of_conv_Layers = 3, lstm_units = 128, lstm_layers = 2, dropout_rate = 0.2):
         # Initialize the model
         first = True
 
-        input_shape = (int((cfg["T_STOP"] - cfg["T_START"])/cfg["T_STEP"]),1)
+        input_shape = (int((testbedcfg["T_STOP"] - testbedcfg["T_START"])/testbedcfg["T_STEP"]),1)
 
         filters = filters
 
@@ -95,16 +95,15 @@ class CBLSTM:
 
         #glob = layers.GlobalAveragePooling1D()(bidirec)
         #flatten = layers.Flatten()(glob)
-        softmax = layers.Dense(int(cfg["NUMBER_OF_BITS"]), activation='sigmoid')(bidirec)
+        softmax = layers.Dense(int(testbedcfg["NUMBER_OF_BITS"]), activation='sigmoid')(bidirec)
 
         mdl = tf.keras.Model(inputs=inputs, outputs=softmax)
 
         adam = tf.keras.optimizers.Adam(learning_rate = learning_rate, clipnorm=1.0)
         # Compile the model
         
-        loss_fn = BinaryCrossentropy(from_logits=False)  
-        #mdl.compile(optimizer=adam, loss=loss_fn, metrics=[Accuracy(), F1Score(), BinaryCrossentropy() , Precision(), Recall()])
-        mdl.compile(optimizer=adam, loss = 'binary_crossentropy', metrics=['accuracy'])
+        loss_fn = BinaryCrossentropy(from_logits=False)
+        mdl.compile(optimizer=adam, loss = 'binary_crossentropy', metrics=[tf.keras.metrics.BinaryAccuracy(), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
         # Summary of the model
         mdl.summary()
         self.model = mdl
@@ -153,7 +152,7 @@ class CBLSTM:
         
         #Speichern der Güte während des Trainings.
         #csv_logger = csv_logger('log.csv', append= True, separator=';')
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-6)
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.3, patience=2, min_lr=1e-6)
         early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
         trained = self.model.fit(train, 
                                  validation_data = val,

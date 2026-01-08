@@ -1,5 +1,7 @@
+import datetime
 import os
 import re
+import uuid
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -7,6 +9,8 @@ from sklearn.utils import shuffle
 from model.DataGeneration import DataGenerator
 from sklearn.model_selection import train_test_split
 import h5py
+import shutil
+import json
 
 SAVE_ADDON = "_static_Receiver"
 UNIQUE_ADDON = "_Unique"
@@ -17,21 +21,24 @@ def generate_Timeline(t_start, t_stop, t_step):
     t = np.arange(t_start, t_stop, t_step)
     return t
 
-def display_train_val_loss():
-    df = pd.read_csv('log.csv', delimiter = ';')
-    trainloss = np.array(df['loss'])
-    valloss = np.array(df['val_loss'])
-    plt.plot(trainloss, 'b')
-    plt.plot(valloss, color = 'orange')
+def display_train_val_loss(history_df, model_path, testbed_name):
+    trainloss = np.array(history_df['loss'])
+    valloss = np.array(history_df['val_loss'])
+    plt.plot(trainloss, 'b', label='Training Loss')
+    plt.plot(valloss, color = 'orange', label='Validation Loss')
     plt.title("Verlauf der Loss Funktion")
-    plt.legend(['Training','Validierung'])
+    plt.legend()
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.savefig('train_and_val_loss.png')
+    plt.grid(True)
+    save_path = os.path.join(model_path,testbed_name)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(os.path.join(save_path, 'train_and_val_loss.png'))
     plt.show()
     
-def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, random_state, time_variable = True):
-    
+def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, random_state):
+
+
     X_test_pure, y_test_pure = shuffle(dist_sequenzes_noisy, sequenzes, random_state=random_state)
     print(f"Total dataset size: {len(dist_sequenzes_noisy)} samples")
     print(f"Dataset shape: {np.array(dist_sequenzes_noisy).shape}")
@@ -71,7 +78,6 @@ def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, r
 
 def load_MLDataset(dataset_path):
     
-
     X_train = pd.read_csv(os.path.join(dataset_path,"X_train.csv"), header=None).to_numpy()
     y_train = pd.read_csv(os.path.join(dataset_path,"y_train.csv"), header=None).to_numpy()
     X_test  = pd.read_csv(os.path.join(dataset_path,"X_test.csv"), header=None).to_numpy()
@@ -134,91 +140,138 @@ def save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes,
 
         print("Complete dataset saved to RawDatasets")
 
-def sanitize(x):
-    return re.sub(r'\D', '', f"{x:.4g}")
-
-def generate_RawDataset_name(cfg):
+def generate_RawDataset_name():
     save_dir = "./RawDatasets"
     os.makedirs(save_dir, exist_ok=True)
 
-    dataset_name = (
-        f"b{cfg['NUMBER_OF_BITS']}"
-        f"_f{sanitize(cfg['F_RX'])}"
-        f"_v{sanitize(cfg['V_0'])}"
-        f"_dz{sanitize(cfg['DZ'])}"
-        f"_U{sanitize(cfg['U'])}"
-        f"_r{sanitize(cfg['CHANNEL_RADIUS'])}"
-        f"_zo{sanitize(cfg['Z_OFFSET'])}"
-        f"_z{sanitize(cfg['Z_DEPTH'])}"
-        f"_rate{sanitize(cfg['BIT_RATE'])}"
-        f"_duration{sanitize(cfg['T_STOP'] - cfg['T_START'])}"
-        f"_{'3d' if cfg['RECEIVER_DIMENSION_3D'] else '2d'}"
-    )
+    dataset_name = "complete_dataset"
+    u = uuid.uuid4().hex[:6]
+    dataset_name = dataset_name + "_"+u
+    dataset_path = os.path.join(save_dir, dataset_name)
+    dataset_path += ".h5"
+    return dataset_path, dataset_name
 
-    dataset_name += "_complete_dataset"
-    dataset_name = os.path.join(save_dir, dataset_name)
-    dataset_name += ".h5"
-    return dataset_name
-
-def generate_MLDataset_name(cfg):
+def generate_MLDataset_name(RawDataset_name, cfg):
     save_dir = "./MLDatasets"
     os.makedirs(save_dir, exist_ok=True)
 
-    filter_str = "-".join(str(f) for f in cfg["FILTERS"])
-
-    model_name = (
-        f"_arrays{sanitize(cfg['NUMBER_OF_ARRAYS'])}"
-        f"_bits{sanitize(cfg['NUMBER_OF_BITS'])}"
-        f"_f{sanitize(cfg['F_RX'])}"
-        f"_v{sanitize(cfg['V_0'])}"
-        f"_dz{sanitize(cfg['DZ'])}"
-        f"_U{sanitize(cfg['U'])}"
-        f"_r{sanitize(cfg['CHANNEL_RADIUS'])}"
-        f"_zo{sanitize(cfg['Z_OFFSET'])}"
-        f"_z{sanitize(cfg['Z_DEPTH'])}"
-        f"_rate{sanitize(cfg['BIT_RATE'])}"
-        f"_duration{sanitize(cfg['T_STOP'] - cfg['T_START'])}"
-        f"_{'3d' if cfg['RECEIVER_DIMENSION_3D'] else '2d'}"
-    )
-
-    model_name = os.path.join(save_dir, model_name)
+    model_name = os.path.join(save_dir, os.path.basename(RawDataset_name).replace(".h5",""))
     return model_name
 
 def generate_Model_name(cfg):
     save_dir = "./NNModels"
     os.makedirs(save_dir, exist_ok=True)
+    u = uuid.uuid4().hex[:6]
+    model_name = cfg["MODEL_NAME"] + f"model_{u}"
+    model_path = os.path.join(save_dir, model_name)
+    return model_path, model_name
 
-    dataset_name = (
-        f"b{cfg['NUMBER_OF_BITS']}"
-        f"_f{sanitize(cfg['F_RX'])}"
-        f"_v{sanitize(cfg['V_0'])}"
-        f"_dz{sanitize(cfg['DZ'])}"
-        f"_U{sanitize(cfg['U'])}"
-        f"_r{sanitize(cfg['CHANNEL_RADIUS'])}"
-        f"_zo{sanitize(cfg['Z_OFFSET'])}"
-        f"_z{sanitize(cfg['Z_DEPTH'])}"
-        f"_rate{sanitize(cfg['BIT_RATE'])}"
-        f"_duration{sanitize(cfg['T_STOP'] - cfg['T_START'])}"
-        f"_{'3d' if cfg['RECEIVER_DIMENSION_3D'] else '2d'}"
-    )
+def save_results(cfg, csv_path, results: dict):
+    file_path = os.path.join(csv_path, "results.csv")
 
-    dataset_name = os.path.join(save_dir, dataset_name)
-    return dataset_name
-
-def save_results(csv_path, model_name, results: dict):
-
-    row = {"model_name": model_name}
-    row.update(results)
-
-    if not os.path.exists(csv_path):
-        df = pd.DataFrame([row]).to_csv(csv_path, index=False)
-        print(f"Created results.csv: {csv_path}")
+    if os.path.exists(file_path):
+        df = pd.read_csv(file_path)
     else:
-        df = pd.read_csv(csv_path)
-        for key in row.keys():
-            if key not in df.columns:
-                df[key] = None
-        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-        df.to_csv(csv_path, index=False)
-        print(f"Updated results.csv: {csv_path}")
-        
+        df = pd.DataFrame()
+
+    model_name = cfg["MODEL_NAME"]
+    testbed_name = cfg["TESTBED_NAME"]
+
+    for col in ["model_name", "testbed_name"]:
+        if col not in df.columns:
+            df[col] = None
+
+    mask = (df["model_name"] == model_name) & (df["testbed_name"] == testbed_name)
+
+    if mask.any():
+        row_index = df.index[mask][0]
+    else:
+        row_index = len(df)
+        df.loc[row_index, ["model_name", "testbed_name"]] = [model_name, testbed_name]
+
+    for key, value in results.items():
+        if key in ["model_name", "testbed_name"]:
+            continue
+        df.loc[row_index, key] = value
+
+    df.to_csv(file_path, index=False)
+
+
+
+
+def logModelParameters(csv_path, model_name, modelcfg):
+
+    file_path = os.path.join(csv_path, "model_logs.csv")
+    if os.path.exists(file_path):
+        df = pd.read_csv(file_path)
+    else:
+        df = pd.DataFrame()
+
+    new_row = {"model_name": model_name}
+
+    for key, value in modelcfg.items():
+        if isinstance(value, (list, dict)):
+            value = json.dumps(value, sort_keys=True)
+        new_row[key] = value
+
+    if df.empty:
+        df = pd.DataFrame([new_row])
+        df.to_csv(file_path, index=False)
+    else:
+
+        for col in new_row.keys():
+            if col not in df.columns:
+                df[col] = None
+
+        comparison = (df[list(new_row.keys())] == pd.Series(new_row)).all(axis=1)
+
+        if not comparison.any():
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            df.to_csv(file_path, index=False)
+
+def logTestbedParameters(csv_path, testbed_name, testbedcfg):
+
+    file_path = os.path.join(csv_path, "testbed_logs.csv")
+    if os.path.exists(file_path):
+        df = pd.read_csv(file_path)
+    else:
+        df = pd.DataFrame()
+    
+    
+    new_row = {"testbed_name": testbed_name}
+
+    for key, value in testbedcfg.items():
+        if isinstance(value, (list, dict)):
+            value = json.dumps(value, sort_keys=True)
+        new_row[key] = value
+
+    if df.empty:
+        df = pd.DataFrame([new_row])
+        df.to_csv(file_path, index=False)
+    else:
+
+        for col in new_row.keys():
+            if col not in df.columns:
+                df[col] = None
+
+        comparison = (df[list(new_row.keys())] == pd.Series(new_row)).all(axis=1)
+
+        if not comparison.any():
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            df.to_csv(file_path, index=False)
+
+
+def make_run_id():
+    t = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    u = uuid.uuid4().hex[:6]
+    return f"run_{t}_{u}"
+
+def change_config(key_to_change, new_value, config_path):
+    
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+
+    config[key_to_change] = new_value
+
+    with open(config_path, 'w') as f:
+        json.dump(config, f, indent=4)
