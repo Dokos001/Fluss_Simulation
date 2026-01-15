@@ -1,6 +1,5 @@
 .venv/
 Datasets/
-RawDatasets/
 *.png
 *.csv
 config.json
