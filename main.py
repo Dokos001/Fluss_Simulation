@@ -15,7 +15,7 @@ from model.tools import change_config, display_train_val_loss, generate_MLDatase
 import random, os
 import typer
 from model.noiseAnalytics import noiseAnalyser
-from view.plotdata import plot_noisy_signals, plot_accuracy, plot_a_sequence
+from view.plotdata import plot_noisy_signals, plot_accuracy, plot_a_sequence, plot_weightingFunction
 from model.DataGeneration import DataGenerator
 from model.trainer import evaluateModel, trainModel
 
@@ -45,13 +45,13 @@ def set_random_seed(seed: int):
     random.seed(seed)
     tf.random.set_seed(seed)
 
-def prepare_data(cfg, dataset_path, MLDataset_path, Gen, t, random_state=42):
+def prepare_data(cfg, dataset_path, MLDataset_path, Gen, t, random_state, use_pure_test_set, test_size):
     """Erzeugt oder lädt die Trainings-/Testdaten entsprechend der Konfiguration."""
     [X_train, X_test, y_train, y_test, X_val, y_val] = None, None, None, None, None, None
     print(dataset_path)
     if os.path.exists(MLDataset_path):
         print("Dataset exists. Loading MLDataset..."+dataset_path)
-        if cfg["PURE_TEST_SET"]:
+        if use_pure_test_set:
             X_test, y_test = load_pureTest_MLDataset(MLDataset_path)
         else:
             [X_train, X_test, y_train, y_test, X_val, y_val] = load_MLDataset(MLDataset_path)
@@ -63,7 +63,7 @@ def prepare_data(cfg, dataset_path, MLDataset_path, Gen, t, random_state=42):
         else:
             print("Loading existing Raw Dataset...")
             dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = load_RawData_from_hdf5(dataset_path)
-        [X_train, X_test, y_train, y_test, X_val, y_val, X_test_pure, y_test_pure] = create_MLDataset(MLDataset_path, dist_sequenzes_noisy, sequenzes, test_size=0.2, random_state=random_state)
+        [X_train, X_test, y_train, y_test, X_val, y_val, X_test_pure, y_test_pure] = create_MLDataset(MLDataset_path, dist_sequenzes_noisy, sequenzes, test_size=test_size, random_state=random_state)
     return [X_train, X_test, y_train, y_test, X_val, y_val]
 
 def getOrCreateTimeSeriesData(cfg, dataset_path, Gen, t):
@@ -97,14 +97,16 @@ def getModelandTestbedName(config_path: str = "config/config.json", modelcfg_pat
         change_config("TRAIN_NEW_MODEL", False, config_path)
         change_config("MODEL_PATH", model_path, config_path)
         change_config("MODEL_NAME", model_name, config_path)
+        logModelParameters(modelLogDir, model_name, modelcfg)
     if cfg["GENERATE_NEW_TESTBED"]:
         testbed_path, testbed_name = generate_RawDataset_name()
         change_config("GENERATE_NEW_TESTBED", False, config_path)
         change_config("TESTBED_PATH", testbed_path, config_path)
         change_config("TESTBED_NAME", testbed_name, config_path)
         name = os.path.splitext(os.path.basename(testbed_name))[0]
-        MLDataset_path = os.path.join("./MLDatasets", name+"_MLDataset")
+        MLDataset_path = os.path.join(testbed_path,"MLDatasets", name+"_MLDataset_"+str(cfg["TEST_SIZE_RATIO"]))
         change_config("MLDATASET_NAME", MLDataset_path, config_path)
+        logTestbedParameters(testbedLogDir, testbed_name, testbedcfg)
     cfg = load_config(config_path)  # Reload config to get updated names
 
     model_name = cfg["MODEL_NAME"]
@@ -112,10 +114,6 @@ def getModelandTestbedName(config_path: str = "config/config.json", modelcfg_pat
     testbed_name = cfg["TESTBED_NAME"]
     testbed_path = cfg["TESTBED_PATH"]
     MLDataset_path = cfg["MLDATASET_NAME"]
-
-
-    logModelParameters(modelLogDir, model_name, modelcfg)
-    logTestbedParameters(testbedLogDir, testbed_name, testbedcfg)
     
     return model_path, model_name, testbed_path, testbed_name, MLDataset_path
     
@@ -136,13 +134,15 @@ def startTraining(config_path: str = "config/config.json"):
     modelcfg = load_config("config/config_model.json")
     Gen = DataGenerator()
     t = generate_Timeline(testbedcfg["T_START"], testbedcfg["T_STOP"], testbedcfg["T_STEP"])
+
     #-------------------------- Random Parameter initialization ---------------------
 
     set_random_seed(cfg["RANDOM_SEED"])
 
     #--------------------------------------------------------------------------------
     model_path, model_name, testbed_path, testbed_name, MLDataset_path = getModelandTestbedName(config_path, modelcfg_path="config/config_model.json", testbedcfg_path="config/config_testbed.json")
-    X_train, X_test, y_train, y_test, X_val, y_val = prepare_data(testbedcfg, testbed_path, MLDataset_path, Gen, t, random_state=cfg["RANDOM_SEED"])
+    directTestbed_path = os.path.join(testbed_path, testbed_name + ".h5")
+    X_train, X_test, y_train, y_test, X_val, y_val = prepare_data(testbedcfg, directTestbed_path, MLDataset_path, Gen, t, random_state=cfg["RANDOM_SEED"], use_pure_test_set=cfg["USE_PURE_TEST_SET"], test_size=cfg["TEST_SIZE_RATIO"])
     model_instance = CBLSTM() # create an instance of the model class
     
 
@@ -191,14 +191,14 @@ def evaluate(
 
     # --------------------- Model- und Testbednamen holen ---------
     model_path, model_name, testbed_path, testbed_name, MLDataset_path = getModelandTestbedName(config_path, modelcfg_path="config/config_model.json", testbedcfg_path="config/config_testbed.json")
-
+    directTestbed_path = os.path.join(testbed_path, testbed_name + ".h5")
     # --------------------- Seeds setzen -------------------------
     set_random_seed(cfg["RANDOM_SEED"])
 
     # --------------------- Daten vorbereiten --------------------
     Gen = DataGenerator()
     t = generate_Timeline(testbedcfg["T_START"], testbedcfg["T_STOP"], testbedcfg["T_STEP"])
-    X_train, X_test, y_train, y_test, X_val, y_val = prepare_data(testbedcfg, dataset_path= testbed_path, MLDataset_path=MLDataset_path, Gen=Gen, t=t, random_state=cfg["RANDOM_SEED"])
+    X_train, X_test, y_train, y_test, X_val, y_val = prepare_data(testbedcfg, dataset_path= directTestbed_path, MLDataset_path=MLDataset_path, Gen=Gen, t=t, random_state=cfg["RANDOM_SEED"], use_pure_test_set=cfg["USE_PURE_TEST_SET"], test_size=cfg["TEST_SIZE_RATIO"])
 
     # --------------------- Modell erstellen ---------------------
     model_path = cfg["MODEL_PATH"]
@@ -226,8 +226,9 @@ def generateMLDatasetOutOFRawDataset(config_path: str = "config/config.json"):
     set_random_seed(cfg["RANDOM_SEED"])
 
     #--------------------------------------------------------------------------------
-    model_path, testbed_path, MLDataset_path = getModelandTestbedName(config_path, modelcfg_path="config/config_model.json", testbedcfg_path="config/config_testbed.json")
-    dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = load_RawData_from_hdf5(testbed_path)
+    model_path, model_name, testbed_path, testbed_name, MLDataset_path = getModelandTestbedName(config_path, modelcfg_path="config/config_model.json", testbedcfg_path="config/config_testbed.json")
+    directTestbed_path = os.path.join(testbed_path, testbed_name + ".h5")
+    dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = load_RawData_from_hdf5(directTestbed_path)
     [X_train, X_test, y_train, y_test, X_val, y_val, X_test_pure, y_test_pure] = create_MLDataset(MLDataset_path, dist_sequenzes_noisy, sequenzes, test_size=0.2, random_state=cfg["RANDOM_SEED"])
 
 @app.command()
@@ -343,12 +344,14 @@ def plot_example(config_path: str = "config/config.json"):
     """
     cfg = load_config(config_path)
     testbedcfg = load_config("config/config_testbed.json")
-    datasetpath = cfg["TESTBED_PATH"]
+    model_path, model_name, testbed_path, testbed_name, MLDataset_path = getModelandTestbedName(config_path, modelcfg_path="config/config_model.json", testbedcfg_path="config/config_testbed.json")
+    directTestbed_path = os.path.join(testbed_path, testbed_name + ".h5")
     Gen = DataGenerator()
     t = generate_Timeline(testbedcfg["T_START"], testbedcfg["T_STOP"], testbedcfg["T_STEP"])
-    dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = getOrCreateTimeSeriesData(testbedcfg,datasetpath, Gen, t)
+    dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes = getOrCreateTimeSeriesData(testbedcfg,directTestbed_path, Gen, t)
     z_varyRx, z_statRx, z_depth_vector, weight_function = Gen.sub_ReceiverPosition(t, testbedcfg["Z_AMPL"], testbedcfg["F_RX"],  testbedcfg["Z_OFFSET"], testbedcfg["Z_DEPTH"], channel_radius=testbedcfg["CHANNEL_RADIUS"], channel_wall_thickness=testbedcfg["CHANNEL_WALL_THICKNESS"], U=testbedcfg["U"])
-    plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, z_varyRx, sequence_index=cfg["SEQUENCE_INDEX"])
+    plot_weightingFunction(weight_function, testbed_path)
+    plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, z_varyRx, sequence_index=cfg["SEQUENCE_INDEX"], testbed_path=testbed_path)
 
 if __name__ == "__main__":
     app()

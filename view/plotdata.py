@@ -1,3 +1,4 @@
+import os
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -40,7 +41,7 @@ def plot_fringing_effects(x, E, E_norm ):
     plt.grid(True)
     plt.show()
 
-def plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, z_varyRx, sequence_index=41):
+def plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, z_varyRx, sequence_index, testbed_path):
 
     s_disturbed = dist_sequenzes[sequence_index]
     s_ideal     = ideal_sequenzes[sequence_index]
@@ -83,66 +84,76 @@ def plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ide
 
 
     # Plot both received signals (disturbed and ideal)
-    plt.figure()
-    plt.subplot(3,1,1)
-    plt.plot(t, z_varyRx, 'k')
-    plt.xlabel('Time in s')
-    plt.ylabel('Receiver position z in meters')
-    plt.title('Varying Receiver Position over one Sequence')
-    plt.grid(True)
-    plt.subplot(3,1,2)
-    plt.plot(t, s_disturbed, 'k')
-    plt.plot(t, s_ideal, 'r')
-    plt.xlabel('Time in s')
-    plt.ylabel('Received signal s')
-    plt.title('Received signal with static and oscillating receiver position')
-    plt.legend(['Disturbed signal', 'Ideal signal'])
-    plt.grid(True)
-    plt.subplot(3,1,3)
-    plt.plot(t, s_disturbed_noisy, 'k')
-    plt.plot(t, s_ideal_noisy, 'r')
-    plt.xlabel('Time in s')
-    plt.ylabel('Received signal s')
-    plt.title('Received signal with static and oscillating receiver position with noise')
-    plt.legend(['Disturbed signal', 'Ideal signal'])
-    plt.grid(True)
-    plt.savefig('./example_sequence.png', dpi=300)
+    f, (a0, a1, a2) = plt.subplots(3, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [1,2,2]})
+    
+    plt.rcParams.update({'axes.titlesize': 20})
+    a0.plot(t, z_varyRx, 'k')
+    a0.set_xlabel('Time in s')
+    a0.set_ylabel('Receiver position z [m]')
+    a0.set_title('Varying Receiver Position over one Sequence')
+    a0.grid(True)
+    a1.plot(t, s_disturbed, 'k')
+    a1.plot(t, s_ideal, 'r')
+    a1.set_xlabel('Time in s')
+    a1.set_ylabel('Received signal s')
+    a1.set_title('Received signal with static and oscillating receiver position')
+    a1.legend(['Disturbed signal', 'Ideal signal'])
+    a1.grid(True)
+    a2.plot(t, s_disturbed_noisy, 'k')
+    a2.plot(t, s_ideal_noisy, 'r')
+    a2.set_xlabel('Time in s')
+    a2.set_ylabel('Received signal s')
+    a2.set_title('Received signal with static and oscillating receiver position with noise')
+    a2.legend(['Disturbed signal', 'Ideal signal'])
+    a2.grid(True)
+    f.tight_layout()
+    f.savefig(os.path.join(testbed_path, 'example_sequence.png'), dpi=300)
 
-    dt = np.mean(np.diff(t)) 
+
+    
+    dt = t[1] - t[0]  # Assuming uniform sampling
     fs = 1.0 / dt # Sampling frequency
     N = len(s_disturbed)
-    yf_dist = fft(s_disturbed)     # FFT of the disturbed signal
-    yf_ideal = fft(s_ideal)        # FFT of the ideal signal
-    xf = fftfreq(N, 1/fs)
-
-    half = N // 2   # Only take the positive frequencies
-    xf = xf[:half] 
-    yf_dist = 2.0/N * np.abs(yf_dist[:half])  
-    yf_ideal = 2.0/N * np.abs(yf_ideal[:half])  
+    yf_dist = np.fft.fft(s_disturbed)
+    yf_ideal = np.fft.fft(s_ideal)
+    xf = np.fft.fftfreq(N, 1/fs)
 
     # Plot
     plt.figure(figsize=(10, 5))
     plt.subplot(2,1,1)
-    plt.bar(xf, yf_dist, width=fs/N, color='k', alpha=0.8)
+    plt.plot(xf, yf_dist, color='k', alpha=0.8)
     plt.title('FFT of Disturbed Signal')
     plt.xlabel("Frequency [Hz]")
     plt.ylabel("Amplitude")
     plt.grid(True, alpha=0.3)
-    plt.xlim(0, 1)
-    plt.ylim(0, max(yf_dist)*0.4)
+    plt.xlim(0, fs/20)
+    plt.ylim(0, None)
     plt.tight_layout()
 
     plt.subplot(2,1,2)
-    plt.bar(xf, yf_ideal, width=fs/N, color='r', alpha=0.8)
+    plt.plot(xf, yf_ideal, color='r', alpha=0.8)
     plt.title('FFT of Ideal Signal')
     plt.xlabel("Frequency [Hz]")
     plt.ylabel("Amplitude")
     plt.grid(True, alpha=0.3)
-    plt.xlim(0, 1)
-    plt.ylim(0, max(yf_ideal)*0.4)
+    plt.xlim(0, fs/20)
+    plt.ylim(0, None)
     plt.tight_layout()
-    plt.savefig('./example_sequence_fft.png', dpi=300)
+    plt.savefig(os.path.join(testbed_path, 'example_sequence_fft.png'), dpi=300)
     plt.show()
+    print(f"Plots saved to {testbed_path}.")
+
+def plot_weightingFunction(weighting_function, testbed_path):
+
+    # Plot both received signals (disturbed and ideal)
+    plt.figure()
+    plt.plot(weighting_function, 'k')
+    plt.ylabel('Bit Contribution Weighting Factor')
+    plt.title('Weighting Function for 3D Receiver')
+    plt.grid(True)
+    plt.show()
+    plt.savefig(os.path.join(testbed_path, 'weighting_function.png'), dpi=300)
+
 
 def plot_noise_comparison(noiseAnalytics):
     t, target_snrs_db, noisy_signal_dict = noiseAnalytics.createNoiseComp()

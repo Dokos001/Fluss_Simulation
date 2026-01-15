@@ -9,7 +9,6 @@ from sklearn.utils import shuffle
 from model.DataGeneration import DataGenerator
 from sklearn.model_selection import train_test_split
 import h5py
-import shutil
 import json
 
 SAVE_ADDON = "_static_Receiver"
@@ -47,7 +46,7 @@ def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, r
         dist_sequenzes_noisy, sequenzes, test_size=test_size, random_state=random_state
     )
     
-    X_train, X_val, y_train, y_val                  = train_test_split(X_train, y_train, test_size=0.20, random_state=random_state)
+    X_train, X_val, y_train, y_val                  = train_test_split(X_train, y_train, test_size=test_size, random_state=random_state)
     X_train, X_test, y_train, y_test, X_val, y_val  = map(np.array, [X_train, X_test, y_train, y_test, X_val, y_val])
     X_train = (X_train - np.mean(X_train)) / np.std(X_train)
     X_test  = (X_test - np.mean(X_test)) / np.std(X_test)
@@ -65,8 +64,7 @@ def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, r
     "X_test_pure": X_test_pure,
     "y_test_pure": y_test_pure,
 }
-    if not os.path.exists(dataset_path):
-        os.makedirs(dataset_path)
+    os.makedirs(dataset_path, exist_ok=True)
     for name, data in splits.items():
         pd.DataFrame(data).to_csv(
             os.path.join(dataset_path, f"{name}.csv"),
@@ -120,7 +118,7 @@ def load_RawData_from_hdf5(filename):
 
 
 def save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes, dataset_name, cfg):
-
+        os.makedirs(os.path.dirname(dataset_name), exist_ok=True)
         with h5py.File(dataset_name, 'w') as hf:
 
              # --- include MetaData ---
@@ -141,14 +139,13 @@ def save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes,
         print("Complete dataset saved to RawDatasets")
 
 def generate_RawDataset_name():
-    save_dir = "./RawDatasets"
+    save_dir = "./Datasets"
     os.makedirs(save_dir, exist_ok=True)
 
     dataset_name = "complete_dataset"
     u = uuid.uuid4().hex[:6]
     dataset_name = dataset_name + "_"+u
     dataset_path = os.path.join(save_dir, dataset_name)
-    dataset_path += ".h5"
     return dataset_path, dataset_name
 
 def generate_MLDataset_name(RawDataset_name, cfg):
