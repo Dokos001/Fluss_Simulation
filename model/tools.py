@@ -19,21 +19,6 @@ output_dir = "Datasets"
 def generate_Timeline(t_start, t_stop, t_step):
     t = np.arange(t_start, t_stop, t_step)
     return t
-
-def display_train_val_loss(history_df, model_path, testbed_name):
-    trainloss = np.array(history_df['loss'])
-    valloss = np.array(history_df['val_loss'])
-    plt.plot(trainloss, 'b', label='Training Loss')
-    plt.plot(valloss, color = 'orange', label='Validation Loss')
-    plt.title("Verlauf der Loss Funktion")
-    plt.legend()
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.grid(True)
-    save_path = os.path.join(model_path,testbed_name)
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    plt.savefig(os.path.join(save_path, 'train_and_val_loss.png'))
-    plt.show()
     
 def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, random_state):
 

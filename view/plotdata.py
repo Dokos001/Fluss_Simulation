@@ -41,6 +41,62 @@ def plot_fringing_effects(x, E, E_norm ):
     plt.grid(True)
     plt.show()
 
+def display_train_val_loss(history_df, model_path, testbed_name):
+    trainloss = np.array(history_df['loss'])
+    valloss = np.array(history_df['val_loss'])
+    plt.plot(trainloss, 'b', label='Training Loss')
+    plt.plot(valloss, color = 'orange', label='Validation Loss')
+    plt.title("Verlauf der Loss Funktion")
+    plt.legend()
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.grid(True)
+    save_path = os.path.join(model_path,testbed_name)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(os.path.join(save_path, 'train_and_val_loss.png'))
+    plt.show()
+
+def display_learning_rate_history(history_df, model_path, testbed_name):
+    learningRate = np.array(history_df['lr'])
+    plt.plot(learningRate, 'b', label='Learning Rate')
+    plt.title("Verlauf der Learning Rate")
+    plt.legend()
+    plt.xlabel("Epoch")
+    plt.ylabel("Learning Rate")
+    plt.grid(True)
+    save_path = os.path.join(model_path,testbed_name)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(os.path.join(save_path, 'learning_rate_history.png'))
+    plt.show()
+
+def display_learning_rate_history_and_loss_in_one_plot(history_df, model_path, testbed_name):
+    learningRate = np.array(history_df['lr'])
+    trainloss = np.array(history_df['loss'])
+    valloss = np.array(history_df['val_loss'])
+    fig, ax1 = plt.subplots()
+
+    color = 'tab:blue'
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('Loss', color=color)
+    ax1.plot(trainloss, 'b', label='Training Loss')
+    ax1.plot(valloss, color = 'orange', label='Validation Loss')
+    ax1.tick_params(axis='y', labelcolor=color)
+
+    ax2 = ax1.twinx()
+
+    color = 'tab:red'
+    ax2.set_ylabel('Learning Rate', color=color)
+    ax2.plot(learningRate, color=color, label='Learning Rate')
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    plt.title("Zusammenhang Learning Rate und Loss")
+    plt.legend()
+    plt.grid(True)
+    save_path = os.path.join(model_path,testbed_name)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(os.path.join(save_path, 'learning_rate_and_loss_history.png'))
+    plt.show()
+
 def plot_a_sequence(t,dist_sequenzes, ideal_sequenzes, dist_sequenzes_noisy, ideal_sequenzes_noisy, z_varyRx, sequence_index, testbed_path):
 
     s_disturbed = dist_sequenzes[sequence_index]
@@ -166,19 +222,6 @@ def plot_noise_comparison(noiseAnalytics):
     plt.ylabel('Signal Amplitude')
     plt.legend()
     plt.grid(True)
-    plt.show()
-
-def display_train_val_loss():
-    df = pd.read_csv('log.csv', delimiter = ';')
-    trainloss = np.array(df['loss'])
-    valloss = np.array(df['val_loss'])
-    plt.plot(trainloss, 'b')
-    plt.plot(valloss, color = 'orange')
-    plt.title("Verlauf der Loss Funktion")
-    plt.legend(['Training','Validierung'])
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.savefig('train_and_val_loss.png')
     plt.show()
 
 def plot_noisy_signals(t, noisy_signal_dict):

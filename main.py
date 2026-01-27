@@ -3,19 +3,17 @@ import json
 import model
 from model.model import CBLSTM
 import numpy as np
-from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 from optuna.integration import KerasPruningCallback
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.callbacks import CSVLogger
 import pandas as pd
-from sklearn.metrics import accuracy_score
-from model.tools import change_config, display_train_val_loss, generate_MLDataset_name, generate_Model_name, load_MLDataset, create_MLDataset, generate_RawDataset_name, load_RawData_from_hdf5, load_pureTest_MLDataset,save_complete_dataset, generate_Timeline, save_results, logModelParameters, logTestbedParameters
+from model.tools import change_config, generate_Model_name, load_MLDataset, create_MLDataset, generate_RawDataset_name, load_RawData_from_hdf5, load_pureTest_MLDataset,save_complete_dataset, generate_Timeline, logModelParameters, logTestbedParameters
 import random, os
 import typer
 from model.noiseAnalytics import noiseAnalyser
-from view.plotdata import plot_noisy_signals, plot_accuracy, plot_a_sequence, plot_weightingFunction
+from view.plotdata import display_learning_rate_history_and_loss_in_one_plot, plot_noisy_signals, plot_accuracy, plot_a_sequence, plot_weightingFunction, display_learning_rate_history, display_train_val_loss
 from model.DataGeneration import DataGenerator
 from model.trainer import evaluateModel, trainModel
 
@@ -247,6 +245,44 @@ def displayAndSaveLogGraphs(config_path: str = "config/config.json"):
     if os.path.exists(hist_csv_path):
         history_df = pd.read_csv(hist_csv_path)
         display_train_val_loss(history_df= history_df, model_path=model_path, testbed_name=testbed_name)
+    else:
+        typer.echo("No training history found at the specified path.")
+
+@app.command()
+def displayLearningRateHistory(config_path: str = "config/config.json"):
+    """
+    Displays and saves the history of the Learning Rate.
+    
+    :param config_path: Path to the configuration file.
+    :type config_path: str
+    """
+    cfg = load_config(config_path)
+    model_path = cfg["MODEL_PATH"]
+    model_name = cfg["MODEL_NAME"]
+    testbed_name = cfg["TESTBED_NAME"]
+    hist_csv_path = os.path.join(os.path.dirname(model_path), model_name, testbed_name,  "training_history.csv")
+    if os.path.exists(hist_csv_path):
+        history_df = pd.read_csv(hist_csv_path)
+        display_learning_rate_history(history_df= history_df, model_path=model_path, testbed_name=testbed_name)
+    else:
+        typer.echo("No training history found at the specified path.")
+
+@app.command()
+def displayLearningRateAndLossHistoryInOneGraph(config_path: str = "config/config.json"):
+    """
+    Displays and saves the history of the Learning Rate.
+    
+    :param config_path: Path to the configuration file.
+    :type config_path: str
+    """
+    cfg = load_config(config_path)
+    model_path = cfg["MODEL_PATH"]
+    model_name = cfg["MODEL_NAME"]
+    testbed_name = cfg["TESTBED_NAME"]
+    hist_csv_path = os.path.join(os.path.dirname(model_path), model_name, testbed_name,  "training_history.csv")
+    if os.path.exists(hist_csv_path):
+        history_df = pd.read_csv(hist_csv_path)
+        display_learning_rate_history_and_loss_in_one_plot(history_df= history_df, model_path=model_path, testbed_name=testbed_name)
     else:
         typer.echo("No training history found at the specified path.")
 
