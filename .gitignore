@@ -2,9 +2,11 @@
 Datasets/
 *.png
 *.csv
+*.pyc
 config.json
 config_copy_PA2.json
 NNModels/
 MLDatasets/
 logs/
+config/
 
