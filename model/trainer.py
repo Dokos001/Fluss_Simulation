@@ -66,6 +66,12 @@ def evaluateModel(cfg, model, modelpath, feature_files_test, label_files_test):
 
     return y_pred,results
 
+def applyTransferLearning(model, feature_files, label_files, feature_files_val, label_files_val, callbacks, batch_size, epochs):
+   
+    model.fit(feature_files, label_files, validation_data=(feature_files_val, label_files_val), epochs=epochs, batch_size=batch_size, callbacks=callbacks, verbose=1)
+
+    return model
+
 class ValueDataGenerator(tf.keras.utils.Sequence):
   def __init__(self, feature_files, label_files, batch_size=8,shuffle=True,):
     self.feature_files = feature_files

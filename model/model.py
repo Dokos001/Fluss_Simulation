@@ -52,11 +52,14 @@ class CBLSTM:
                 else:
                         self.learning_rate = learning_rate
 
-    def create_model(self, cfg, testbedcfg, learning_rate = 0.0001, filters = [32,64,128], num_of_conv_Layers = 3, lstm_units = 128, lstm_layers = 2, dropout_rate = 0.2):
+    def create_model(self, cfg, testbedcfg, learning_rate = 0.0001, filters = [32,64,128], num_of_conv_Layers = 3, lstm_units = 128, lstm_layers = 2, dropout_rate = 0.2, input_shape = None):
         # Initialize the model
         first = True
 
-        input_shape = (int((testbedcfg["T_STOP"] - testbedcfg["T_START"])/testbedcfg["T_STEP"]),1)
+        if input_shape == None:
+            input_shape = (int((testbedcfg["T_STOP"] - testbedcfg["T_START"])/testbedcfg["T_STEP"]),1)
+        else:
+            input_shape = (input_shape, 1)
 
         filters = filters
 
@@ -105,7 +108,7 @@ class CBLSTM:
         loss_fn = BinaryCrossentropy(from_logits=False)
         mdl.compile(optimizer=adam, loss = 'binary_crossentropy', metrics=[tf.keras.metrics.BinaryAccuracy(), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
         # Summary of the model
-        mdl.summary()
+        #mdl.summary()
         self.model = mdl
         return mdl
     

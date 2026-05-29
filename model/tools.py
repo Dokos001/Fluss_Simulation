@@ -48,7 +48,7 @@ def create_MLDataset(dataset_path, dist_sequenzes_noisy, sequenzes, test_size, r
     "y_val": y_val,
     "X_test_pure": X_test_pure,
     "y_test_pure": y_test_pure,
-}
+    }
     os.makedirs(dataset_path, exist_ok=True)
     for name, data in splits.items():
         pd.DataFrame(data).to_csv(
@@ -76,6 +76,152 @@ def load_pureTest_MLDataset(dataset_path):
 
     return X_test, y_test
 
+def split_dataset(X, y, test_size, random_state):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
+    X_train, X_val, y_train, y_val   = train_test_split(X_train, y_train, test_size=test_size, random_state=random_state)
+    return X_train, X_test, y_train, y_test, X_val, y_val
+
+
+def extract_dataset_from_Bartunik_Data(real_signal, transform_to_volume_signal = False):
+    t = real_signal['time']
+    t_corrected = t[150:]
+    resonanceShift = real_signal['value']
+    resonanceShift_corrected = resonanceShift[150:]
+    L0 = 250e-6 #H
+    C = 68e-12 #F
+    f0 = 1/(2*np.pi*np.sqrt(L0*C))# Hz
+
+    # Custom Sequence Lengths based on actual data
+    amount_of_data_points = [
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            160,160,160,
+                            166,166,167,
+                            160,160,160,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            160,160,160,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            160,160,160,
+                            163,163,164,
+                            160,160,160,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            160,160,160,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            160,160,160,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164,
+                            163,163,164
+                            ]#[490, 490, 490, 480, 500, 480, 490, 490, 490, 490, 490, 490, 490, 480, 490, 490, 490, 490, 480, 490, 480, 490, 490, 490, 480, 490,# 490, 490, 490, 480, 490, 490, 490, 490, 490]
+    
+    # Calculated through 5 khz shift per 30 ul, spions
+    #k_hz_per_ul = 166.7 # hz/ul
+    
+    #baseline_shift_window = 120
+    #resonanceShift_baseline_corrected =  np.convolve(resonanceShift_corrected, np.ones(baseline_shift_window)/baseline_shift_window, mode='valid')
+    #resonanceShift_baseline_corrected_padded = np.pad(resonanceShift_baseline_corrected, (baseline_shift_window-1, 0), mode='edge')
+    #resonanceShift_baseline_corrected = resonanceShift_corrected - resonanceShift_baseline_corrected_padded
+    #resonanceShift_baseline_corrected_volume_signal = (resonanceShift_baseline_corrected *1000) / -k_hz_per_ul
+    #signal = resonanceShift_baseline_corrected_volume_signal
+    signal = resonanceShift_corrected # convert to hz
+    signal_save = signal
+
+    if transform_to_volume_signal:
+        signal = signal
+        Leff = pow(1/(2*np.pi*  signal),2)/C
+        signal = Leff
+        print("f min:", np.min(signal_save))
+        print("f max:", np.max(signal_save))
+        print("f unique count:", len(np.unique(signal_save)))
+        print(f"Leff range: {np.min(Leff):.2e} H to {np.max(Leff):.2e} H")
+        print(f"Shape of Leff signal: {Leff.shape}")
+
+    
+    sequences = []
+    start_index = 0
+    for i in range(len(amount_of_data_points)):
+        end_index = start_index + amount_of_data_points[i]
+        sequences.append(signal[start_index:end_index])
+        start_index = end_index
+    
+    # SNR estimation
+
+    Noise_segment = sequences[1][:100]  # Assuming the first 100 points are noise
+    Signal_segment = sequences[1][110:200]  # Assuming the next 300 points contain the signal
+    Noise_power = np.mean(Noise_segment**2)
+    Signal_power = np.mean(Signal_segment**2)
+    SNR = 10 * np.log10(Signal_power / Noise_power)
+    print(f"Estimated SNR: {SNR:.2f} dB")
+
+    target_length = 170 #500
+
+    for i, seq in enumerate(sequences):
+        seq = np.array(seq, dtype=float) 
+        if len(seq) < target_length:  # Only pad sequences that are shorter than the target length
+            sequences[i] = np.pad(seq, (0, target_length - len(seq)), mode='edge')
+    
+    sequences = sequences[:-1]
+    print(f"Length of sequences: {len(sequences)}, Length of each sequence: {len(sequences[0])}")
+    labels = []
+    with open('RealeMessungen/Complete Transmission Sequence.txt', 'r') as f:
+        labels = [int(x) for x in list(f.read())]
+    sequence_labels = []
+
+    AmountOfLabelsPerSequence = 10
+
+    if (len(labels) % AmountOfLabelsPerSequence) != 0:
+        padding_amount = AmountOfLabelsPerSequence - (len(labels) % AmountOfLabelsPerSequence)
+        labels = np.pad(labels, (0, padding_amount), mode='constant')
+
+    for i in range(0, len(labels), AmountOfLabelsPerSequence):
+        label_seq = labels[i:i+AmountOfLabelsPerSequence]
+        sequence_labels.append(label_seq)
+        print(f"{int(i/10)}: {label_seq}")
+    print(len(sequences), len(sequence_labels))
+
+    for i in range(len(sequences)):
+        plt.figure(figsize=(12, 6))
+        plt.plot(sequences[i], color='blue')
+        plt.title('Real World Signal Over Time')
+        plt.xlabel('index')
+        plt.ylabel('Received Signal s')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(f'figures/real_signal_sequence_{i}.png', dpi=300)
+        #print(f"Labels for sequence {i}: {sequence_labels[i]}")
+        plt.close()
+
+    splits = {
+    "X_test_pure": sequences,
+    "y_test_pure": sequence_labels
+    }
+    savepath = f"Datasets/RealDataBartunik2023_{AmountOfLabelsPerSequence}Bit"
+    if transform_to_volume_signal:
+        savepath = savepath + "_Leff_Signal"
+    os.makedirs(savepath, exist_ok=True)
+    for name, data in splits.items():
+        pd.DataFrame(data).to_csv(
+            os.path.join(savepath, f"{name}.csv"),
+            header=False,
+            index=False
+        )
+
 
 def load_RawData_from_hdf5(filename):
     dist_sequenzes = []
@@ -101,6 +247,24 @@ def load_RawData_from_hdf5(filename):
 
     return dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes
 
+def load_RawData_from_Bartunik_hdf5(filename):
+    dist_sequenzes = []
+    dist_sequenzes_noisy = []
+    sequenzes = []
+
+    with h5py.File(filename, 'r') as hf:
+        # Disturbed Signals
+        grp = hf['disturbed_signals']
+        dist_sequenzes = [sig for sig in grp['data']]
+        dist_sequenzes_noisy = [sig for sig in grp['data_noisy']]
+
+
+        # Original Sequences
+        grp = hf['original_sequences']
+        sequenzes = [sig for sig in grp['data']]
+
+    return dist_sequenzes, dist_sequenzes_noisy, sequenzes
+
 
 def save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes, ideal_sequenzes_noisy, sequenzes, dataset_name, cfg):
         os.makedirs(os.path.dirname(dataset_name), exist_ok=True)
@@ -117,6 +281,23 @@ def save_complete_dataset(dist_sequenzes, dist_sequenzes_noisy, ideal_sequenzes,
             grp = hf.create_group('ideal_signals')
             grp.create_dataset('data', data=ideal_sequenzes)
             grp.create_dataset('data_noisy', data=ideal_sequenzes_noisy)
+
+            grp = hf.create_group('original_sequences')
+            grp.create_dataset('data', data=sequenzes)
+
+        print("Complete dataset saved to RawDatasets")
+
+def save_modified_dataset(dist_sequenzes, dist_sequenzes_noisy, sequenzes, dataset_name, cfg):
+        os.makedirs(os.path.dirname(dataset_name), exist_ok=True)
+        with h5py.File(dataset_name, 'w') as hf:
+
+             # --- include MetaData ---
+            hf.attrs["dataset_name"] = dataset_name
+            for k, v in cfg.items():
+                hf.attrs[k] = v
+            grp = hf.create_group('disturbed_signals')
+            grp.create_dataset('data', data=dist_sequenzes)
+            grp.create_dataset('data_noisy', data=dist_sequenzes_noisy)
 
             grp = hf.create_group('original_sequences')
             grp.create_dataset('data', data=sequenzes)
@@ -177,9 +358,6 @@ def save_results(cfg, csv_path, results: dict):
         df.loc[row_index, key] = value
 
     df.to_csv(file_path, index=False)
-
-
-
 
 def logModelParameters(csv_path, model_name, modelcfg):
 
@@ -257,3 +435,51 @@ def change_config(key_to_change, new_value, config_path):
 
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=4)
+
+def extractMean_and_plot_impulse_response(signal, t, save_path):
+    impulse_response = signal - np.mean(signal[0:300])
+    t = t[532:572]
+    t = t-t[0]
+    impulse_response = impulse_response[532:572]
+    h_norm = impulse_response / np.sum(np.abs(impulse_response))
+    h_norm = abs(h_norm)
+
+    test_sequence = [0,1,0,1,0,1,0,1,1,1]
+    
+    ones = np.zeros(5).tolist() + np.ones(6).tolist()+ np.zeros(5).tolist()
+    ones = np.array(ones)
+    
+    print(f"Ones pattern: {ones}")
+    zeros = np.zeros(16)
+    bit_sequence = []
+    for bit in test_sequence:
+        if bit == 1:
+            bit_sequence.extend(ones)
+        else:
+            bit_sequence.extend(zeros)
+    bit_sequence = np.array(bit_sequence)
+    test_sequence_convolved = np.convolve(bit_sequence, h_norm, mode='same')
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(t, h_norm, color='red')
+    plt.title('Estimated Impulse Response')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Impulse Response (Hz/s)')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(test_sequence_convolved, color='blue')
+    plt.title('Sequence Convolved with Impulse Response')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Amplitude')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(save_path[:-3]+"_convolved.png", dpi=300)
+    plt.close()
+    print(f"Impulse response shape: {h_norm.shape}, Time shape: {t.shape}")
+    print(f"Convolved sequence shape: {test_sequence_convolved.shape}")
+    return h_norm, t
+
