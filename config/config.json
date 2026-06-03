@@ -1,0 +1,13 @@
+{
+    "RANDOM_SEED": 42,
+    "SEQUENCE_INDEX": 41,
+    "MODEL_PATH": "./NNModels/StandardArchitecturemodel_615be9",
+    "TESTBED_PATH": "./Datasets/complete_dataset_fd3d67",
+    "MODEL_NAME": "StandardArchitecturemodel_615be9",
+    "TESTBED_NAME": "complete_dataset_fd3d67",
+    "MLDATASET_NAME": "./Datasets/complete_dataset_fd3d67/MLDatasets/complete_dataset_fd3d67_MLDataset_0.2",
+    "TRAIN_NEW_MODEL": false,
+    "GENERATE_NEW_TESTBED": false,
+    "USE_PURE_TEST_SET": false,
+    "TEST_SIZE_RATIO": 0.2
+}

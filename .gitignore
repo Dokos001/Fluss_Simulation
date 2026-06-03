@@ -1,7 +1,19 @@
-.venv/Lib/**
-.venv/Include/**
+.venv/
+Datasets/
+*.png
 *.csv
+<<<<<<< HEAD
 Datasets/**
 figures/**
 NNModels/**
 RealeMessungen/**
+=======
+*.pyc
+config.json
+config_copy_PA2.json
+NNModels/
+MLDatasets/
+logs/
+config/
+
+>>>>>>> 1cd45f401a7cf35a5bc788350af3a3e21f244c5d
