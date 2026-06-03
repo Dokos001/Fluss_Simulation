@@ -1,4 +1,12 @@
-.venv/Lib/**
-.venv/Include/**
+.venv/
+Datasets/
+*.png
 *.csv
-.venv/Datasets/
+*.pyc
+config.json
+config_copy_PA2.json
+NNModels/
+MLDatasets/
+logs/
+config/
+
