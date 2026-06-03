@@ -1,4 +1,7 @@
 .venv/Lib/**
 .venv/Include/**
 *.csv
-.venv/Datasets/
+.venv/Datasets/**
+.venv/figures/**
+.venv/NNModels/**
+.venv/RealeMessungen/**
