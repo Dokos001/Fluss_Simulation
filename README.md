@@ -6,7 +6,7 @@ This project is designed to simulate laminar flow of particles through a tubular
 # Fluss-Simulation – 
 
 This project is designed to simulate laminar flow of particles through a tubular channel with a constant background flow. Neural Networks are the trained on the virtual Data.
->>>>>>> 1cd45f401a7cf35a5bc788350af3a3e21f244c5d
+>>>>>>> 
 
 ---
 
@@ -29,7 +29,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 =======
 - Python 3.10 or higher  
 - Git (for cloning)
->>>>>>> 1cd45f401a7cf35a5bc788350af3a3e21f244c5d
+>>>>>>> 
 
 ---
 
@@ -98,7 +98,7 @@ With:
 ```bash
 uv run main.py --help
 ```
-
 you will get a summary of the commands used in this environment and these commands can be used through the main script.
 =======
+
 >>>>>>>>>>>>>>>>
