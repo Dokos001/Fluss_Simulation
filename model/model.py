@@ -1,7 +1,7 @@
 
 import os
-import tensorflow.keras.layers as layers
 import tensorflow as tf
+import tensorflow.keras.layers as layers
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import BinaryCrossentropy

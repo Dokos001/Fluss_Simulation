@@ -71,66 +71,34 @@ source .venv/bin/activate
 
 Alternatively, you can run commands directly through `uv run` without activating the environment.
 
+### 4. Starting Training
 
----
-
-## 📦 Dependency Management
-
-To add a new dependency:
+You can run the Training algorithem through:
 
 ```bash
-uv add <package-name>
+uv run main.py starttraining
 ```
 
-To update dependencies:
+The used dataset and model parameters are noted under config/Config_testbed.json and config/config_model.json
+
+### 5. Evaluate the Model
+
+After training the model can be evaluated through: 
 
 ```bash
-uv sync
+uv run main.py evaluate
 ```
+
+The final results will be noted in results.
+
+### 5. Help
+
+With: 
+
+```bash
+uv run main.py --help
+```
+
+you will get a summary of the commands used in this environment and these commands can be used through the main script.
 =======
-### 2. Create a Virtual Environment
-
-We highly recommend running the project inside a virtual environment to avoid dependency conflicts.
-
-```bash
-python -m venv .venv
-```
-
-### 3. Activate the Virtual Environment
-
-- **Windows (PowerShell):**
-
-    ```bash
-    .venv\Scripts\Activate.ps1
-    ```
-
-- **macOS / Linux:**
-
-    ```bash
-    source .venv/bin/activate
-    ```
-
-You should now see the environment name in your shell prompt, e.g., `(.venv)`.
-
-### 4. Install Dependencies
-
-All required libraries are listed in `requirements.txt`. Run:
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## 🚀 Running the Script
-
-To download the dataset, run:
-
-```bash
-python scieboDataPull.py
-```
-
-You will be prompted to enter your Sciebo username and password. Optionally, you can choose to save these credentials temporarily or use a secure method like the system keyring.
-
-Downloaded `.csv` files will be stored in the `dataset/` directory. Existing files will be skipped automatically.  
->>>>>>> 1cd45f401a7cf35a5bc788350af3a3e21f244c5d
+>>>>>>>>>>>>>>>>
